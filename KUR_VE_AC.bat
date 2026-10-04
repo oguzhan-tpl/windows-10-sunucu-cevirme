@@ -64,6 +64,8 @@ if not exist ".env" (
     echo MAX_APP_UPLOAD_MB=128
     echo APP_MAX_COUNT=5
     echo APP_PROXY_BODY_MAX_MB=16
+    echo PUBLIC_HOSTNAME=
+    echo CLOUDFLARE_TUNNEL_TOKEN=
   ) > ".env"
 )
 
