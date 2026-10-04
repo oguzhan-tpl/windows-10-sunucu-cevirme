@@ -21,7 +21,7 @@ from .db import (
     list_media, list_projects, list_users, project_kv_path, set_project_kv,
     verify_password, ensure_bootstrap,
 )
-from .security import COOKIE_NAME, create_session, require_role, require_user
+from .security import BROWSER_MAX_AGE, COOKIE_NAME, create_session, require_role, require_user, revoke_session
 from .runner import deploy_async, stop as stop_project
 
 
@@ -76,13 +76,21 @@ async def login(body: Login):
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(401, "Kullanıcı adı veya şifre hatalı.")
     out = JSONResponse({"ok": True, "user": {"id": user["id"], "username": user["username"], "role": user["role"]}})
-    out.set_cookie(COOKIE_NAME, create_session(user["id"]), httponly=True, samesite="lax",
-                   secure=settings.cookie_secure, max_age=settings.session_ttl_hours * 3600, path="/")
+    out.set_cookie(
+        COOKIE_NAME,
+        create_session(user["id"]),
+        httponly=True,
+        samesite="lax",
+        secure=settings.cookie_secure,
+        max_age=BROWSER_MAX_AGE,
+        path="/",
+    )
     return out
 
 
 @app.post("/api/auth/logout")
-async def logout():
+async def logout(request: Request):
+    revoke_session(request.cookies.get(COOKIE_NAME))
     out = JSONResponse({"ok": True})
     out.delete_cookie(COOKIE_NAME, path="/")
     return out
