@@ -167,12 +167,6 @@ def delete_user_sessions(user_id):
     with db() as c:
         c.execute("DELETE FROM sessions WHERE user_id=?",(user_id,))
 
-def ensure_bootstrap(username,password,role):
-    if not username or not password: return
-    with db() as c:
-        if c.execute("SELECT 1 FROM users WHERE username=? COLLATE NOCASE",(username,)).fetchone(): return
-        c.execute("INSERT INTO users(username,password_hash,role,created_at) VALUES(?,?,?,?)",(username,hash_password(password),role,now_iso()))
-
 def get_user_by_username(username):
     with db() as c:
         return c.execute("SELECT * FROM users WHERE username=? COLLATE NOCASE",(username,)).fetchone()
