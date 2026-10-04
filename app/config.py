@@ -38,6 +38,8 @@ class Settings:
     app_proxy_body_max_mb:int
     public_hostname:str
     cloudflare_tunnel_token:str
+    cloudflare_tunnel_name:str
+    user_storage_quota_mb:int
 
 def load_settings():
     data=Path(os.getenv("DATA_DIR","./data")).resolve()
@@ -60,7 +62,12 @@ def load_settings():
         app_proxy_body_max_mb=max(1,env_int("APP_PROXY_BODY_MAX_MB",16)),
         public_hostname=os.getenv("PUBLIC_HOSTNAME","").strip(),
         cloudflare_tunnel_token=os.getenv("CLOUDFLARE_TUNNEL_TOKEN","").strip(),
+        cloudflare_tunnel_name=os.getenv("CLOUDFLARE_TUNNEL_NAME","sunucumon").strip() or "sunucumon",
+        user_storage_quota_mb=max(64,env_int("USER_STORAGE_QUOTA_MB",2048)),
     )
+    # Accept both a hostname and a full https://hostname value in .env.
+    if result.public_hostname.lower().startswith(("http://","https://")):
+        object.__setattr__(result, "public_hostname", result.public_hostname.split("://",1)[1].rstrip("/"))
     if not result.server_secret or result.server_secret=="change-this-to-a-long-random-secret":
         raise RuntimeError("SERVER_SECRET .env içinde güçlü bir değere ayarlanmalı.")
     for folder in (result.data_dir,result.media_dir,result.projects_dir):
