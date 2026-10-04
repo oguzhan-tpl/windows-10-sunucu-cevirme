@@ -19,11 +19,25 @@
 
 <section id="app" class="hidden">
 <div class="stats"><div class="card"><small>Rol</small><strong id="role">-</strong></div><div class="card"><small>Medya</small><strong id="mc">0</strong></div><div class="card"><small>Durum</small><strong>ONLINE</strong></div></div>
+
 <div class="cols">
 <section class="card"><div class="head"><h2>Medya</h2><button id="refresh" class="ghost">Yenile</button></div><div id="media" class="list"></div></section>
-<section id="dev" class="card hidden"><div class="head"><h2>Developer</h2><span class="muted">localhost proje alanları</span></div><form id="project" class="row"><input id="pn" placeholder="Proje adı" required><button>Oluştur</button></form><div id="projects" class="list"></div></section>
+
+<section id="dev" class="card hidden">
+<div class="head"><h2>Developer</h2><span class="muted">proje alanları</span></div>
+<form id="project" class="row"><input id="pn" placeholder="Proje adı" required><button>Oluştur</button></form>
+<div id="projects" class="list"></div>
+</section>
 </div>
-<section id="admin" class="card hidden"><div class="head"><h2>Admin medya</h2></div><form id="upload" class="row"><input id="mt" placeholder="Başlık" required><input id="mf" type="file" required><button>Yükle</button></form><div id="admin-media" class="list"></div></section>
+
+<section id="admin" class="card hidden">
+<div class="head"><h2>Admin</h2><span class="muted">medya ve hesap yönetimi</span></div>
+<form id="upload" class="row"><input id="mt" placeholder="Film / video başlığı" required><input id="mf" type="file" required><button>Yükle</button></form>
+<div id="admin-media" class="list"></div>
+<hr>
+<form id="new-user" class="row admin-user"><input id="nu" placeholder="Yeni kullanıcı adı" required><input id="np" type="password" placeholder="Şifre" required><select id="nr"><option value="user">user</option><option value="developer">developer</option><option value="admin">admin</option></select><button>Hesap aç</button></form>
+</section>
+
 <button id="out" class="danger">Çıkış</button>
 </section>
 </main>
