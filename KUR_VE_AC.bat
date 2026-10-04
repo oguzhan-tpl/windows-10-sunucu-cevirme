@@ -139,7 +139,7 @@ echo Astra will use localhost port !ASTRA_PORT!.
 echo.
 echo [7/7] Starting Astra core...
 if exist "data\startup.log" del /q "data\startup.log" >nul 2>nul
-start "ASTRA SERVER" /min "%ComSpec%" /c call "%CD%\scripts\start_core.bat"
+start "ASTRA SERVER" /min "%ComSpec%" /k call "%CD%\scripts\start_core.bat"
 
 set "READY=0"
 for /l %%T in (1,1,20) do (
@@ -158,7 +158,7 @@ echo Astra core is ONLINE.
 
 echo.
 echo Starting public access...
-start "ASTRA PUBLIC" /min "%ComSpec%" /c call "%CD%\PUBLIC_AC.bat"
+start "ASTRA PUBLIC" /min "%ComSpec%" /k call "%CD%\PUBLIC_AC.bat"
 timeout /t 2 /nobreak >nul
 start "" "http://127.0.0.1:!ASTRA_PORT!"
 
