@@ -353,7 +353,7 @@ def owned(request: Request, slug: str):
 async def server_status(request: Request):
     require_user(request)
     url_file = settings.data_dir / "public-url.txt"
-    public_url = settings.public_hostname or ""
+    public_url = ("https://" + settings.public_hostname) if settings.public_hostname else ""
     if url_file.exists() and not public_url:
         try:
             public_url = url_file.read_text("utf-8").strip()
@@ -365,6 +365,7 @@ async def server_status(request: Request):
         "public_url": public_url,
         "url": public_url,
         "tunnel": bool(public_url),
+        "stable": bool(settings.public_hostname),
     }
 
 
