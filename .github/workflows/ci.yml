@@ -11,17 +11,28 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
+
       - name: Compile Python
         run: python -m compileall -q app
+
       - name: Import application
         env:
           SERVER_SECRET: ci-only-secret-please-replace
           DATA_DIR: ${{ runner.temp }}/astra-data
           COOKIE_SECURE: "false"
         run: python -c "from app.main import app; print(app.title)"
+
+      - name: Test real startup lifecycle
+        env:
+          SERVER_SECRET: ci-only-secret-please-replace
+          DATA_DIR: ${{ runner.temp }}/astra-startup-data
+          COOKIE_SECURE: "false"
+        run: python -c "from fastapi.testclient import TestClient; from app.main import app; c=TestClient(app); r=c.get('/healthz'); assert r.status_code==200, r.text; assert r.json().get('ok') is True; print('Astra startup lifecycle OK')"
