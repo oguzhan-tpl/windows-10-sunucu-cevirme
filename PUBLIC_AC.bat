@@ -5,7 +5,7 @@ title ASTRA PUBLIC - CLOUDFLARE TUNNEL
 
 if not exist "cloudflared\cloudflared.exe" (
   echo ERROR: cloudflared.exe not found.
-  exit /b 1
+  goto fail
 )
 
 set "PORT=8080"
@@ -51,7 +51,7 @@ for /l %%T in (1,1,20) do (
   timeout /t 1 /nobreak >nul
 )
 echo Public tunnel was not ready in time. Check data\tunnel.log.
-exit /b 1
+goto fail
 
 :stable
 > "data\public-url.txt" echo https://!HOSTNAME!
@@ -70,7 +70,7 @@ for /l %%T in (1,1,20) do (
 )
 echo Tunnel process is running, but the public hostname did not pass /healthz.
 echo Verify the Cloudflare Published Application points to http://127.0.0.1:!PORT!.
-exit /b 1
+goto fail
 
 :ready
 echo.
@@ -78,4 +78,17 @@ echo =========================================================
 echo PUBLIC URL READY
 echo !PUBLIC_URL!
 echo =========================================================
-exit /b 0
+echo Tunnel watcher is running in a separate window.
+goto done
+
+:fail
+echo.
+echo =========================================================
+echo PUBLIC ACCESS FAILED
+echo =========================================================
+echo Check data\tunnel.log for the exact reason.
+echo This window is intentionally kept open.
+pause
+exit /b 1
+
+:done
