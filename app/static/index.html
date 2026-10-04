@@ -95,10 +95,10 @@
             <div class="eyebrow" id="section-kicker">GENEL BAKIŞ</div>
             <h1 id="section-title">Kontrol merkezi</h1>
           </div>
-          <div class="profile-box">
+          <button id="account-trigger" class="profile-box profile-trigger" type="button" aria-expanded="false" aria-controls="account-drawer">
             <div class="profile-copy"><strong id="who">Misafir</strong><span id="role">-</span></div>
             <div class="profile-avatar" id="avatar">A</div>
-          </div>
+          </button>
         </header>
 
         <section id="overview" class="page-section active-section">
@@ -174,10 +174,10 @@
             </section>
 
             <section class="panel-card">
-              <div class="panel-head"><div><div class="eyebrow">HESAPLAR</div><h2>Kullanıcı oluştur</h2><p>Yeni kullanıcı veya geliştirici hesabı açın.</p></div></div>
+              <div class="panel-head"><div><div class="eyebrow">HESAPLAR</div><h2>Kullanıcı oluştur</h2><p>Yeni kullanıcı, geliştirici veya yönetici hesabı açın.</p></div></div>
               <form id="new-user" class="form-stack">
                 <label>Kullanıcı adı<input id="nu" required></label>
-                <label>Şifre<input id="np" type="password" required></label>
+                <label>Şifre<input id="np" type="password" minlength="8" required></label>
                 <label>Rol<select id="nr"><option value="user">Kullanıcı</option><option value="developer">Geliştirici</option><option value="admin">Yönetici</option></select></label>
                 <button class="button primary" type="submit">Hesap aç</button>
               </form>
@@ -185,19 +185,32 @@
           </div>
 
           <section class="panel-card admin-table-card">
-            <div class="panel-head"><div><div class="eyebrow">SİSTEM ANALİZİ</div><h2>Kullanım özeti</h2><p>Kullanıcı, proje ve veritabanı kullanımını tek ekranda izleyin.</p></div><button id="refresh-admin" class="button light small" type="button">Yenile</button></div>
+            <div class="panel-head"><div><div class="eyebrow">SİSTEM ANALİZİ</div><h2>Kullanım merkezi</h2><p>Hesap, veritabanı, proje, oturum ve disk kullanımını tek ekranda izleyin.</p></div><button id="refresh-admin" class="button light small" type="button">Yenile</button></div>
             <div class="summary-grid admin-summary">
               <article class="metric"><div><span>Kullanıcı</span><small>Toplam hesap</small></div><strong id="admin-user-count">0</strong></article>
+              <article class="metric"><div><span>Geliştirici</span><small>Uygulama sahibi</small></div><strong id="admin-dev-count">0</strong></article>
               <article class="metric"><div><span>Veritabanı</span><small>Toplam proje DB</small></div><strong id="admin-db-count">0</strong></article>
-              <article class="metric"><div><span>Depolama</span><small>Veritabanı toplamı</small></div><strong id="admin-db-size">0 MB</strong></article>
-              <article class="metric"><div><span>En aktif</span><small>En fazla DB alanı kullanan</small></div><strong id="admin-top-user">-</strong></article>
+              <article class="metric"><div><span>DB alanı</span><small>SQLite toplamı</small></div><strong id="admin-db-size">0 MB</strong></article>
+              <article class="metric"><div><span>Oturum</span><small>Aktif oturum</small></div><strong id="admin-session-count">0</strong></article>
+              <article class="metric"><div><span>En çok kullanan</span><small>Proje alanına göre</small></div><strong id="admin-top-user">-</strong></article>
             </div>
+            <div class="admin-disk" id="admin-disk">Disk kullanım bilgisi hazırlanıyor…</div>
             <div id="admin-usage" class="data-list"></div>
           </section>
 
           <section class="panel-card admin-table-card">
-            <div class="panel-head"><div><div class="eyebrow">HESAP LİSTESİ</div><h2>Kullanıcılar</h2></div></div>
+            <div class="panel-head"><div><div class="eyebrow">HESAP YÖNETİMİ</div><h2>Kullanıcılar</h2><p>Rol değiştirin, şifre sıfırlayın veya hesabı kaldırın.</p></div></div>
             <div id="admin-users" class="data-list"></div>
+          </section>
+
+          <section class="panel-card admin-table-card">
+            <div class="panel-head"><div><div class="eyebrow">VERİTABANI YÖNETİMİ</div><h2>Veritabanları</h2><p>Her proje veritabanını sahibi, kayıt sayısı, boyutu ve durumuyla görün.</p></div></div>
+            <div id="admin-databases" class="data-list"></div>
+          </section>
+
+          <section class="panel-card admin-table-card">
+            <div class="panel-head"><div><div class="eyebrow">UYGULAMA YÖNETİMİ</div><h2>Projeler</h2><p>Çalışan uygulamaları durdurun veya tamamen kaldırın.</p></div></div>
+            <div id="admin-projects" class="data-list"></div>
           </section>
 
           <section class="panel-card admin-table-card">
@@ -210,6 +223,15 @@
       </div>
     </section>
   </main>
+  <div id="account-drawer" class="drawer-overlay hidden" aria-hidden="true">
+    <div class="drawer-backdrop" data-drawer-close></div>
+    <section class="account-drawer" role="dialog" aria-modal="true" aria-labelledby="account-title">
+      <div class="drawer-head"><div><div class="eyebrow">HESAP</div><h2 id="account-title">Profil ve oturum</h2></div><button id="account-drawer-close" class="icon-button" type="button" aria-label="Kapat">×</button></div>
+      <div class="drawer-profile"><div class="drawer-avatar" id="drawer-avatar">A</div><div><strong id="drawer-name">-</strong><span id="drawer-role">-</span></div></div>
+      <div class="drawer-facts"><div><span>Public adres</span><strong id="drawer-public">-</strong></div><div><span>Sunucu</span><strong>ASTRA SERVER</strong></div></div>
+      <button id="drawer-out" class="button logout-wide" type="button">Oturumu kapat</button>
+    </section>
+  </div>
   <div id="toast" class="toast"></div>
   <script src="/static/app.js?v=20261004"></script>
 </body>
