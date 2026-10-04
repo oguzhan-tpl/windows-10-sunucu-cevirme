@@ -45,7 +45,7 @@ def load_settings():
         port=env_int("PORT",8080),
         server_secret=os.getenv("SERVER_SECRET",""),
         cookie_secure=env_bool("COOKIE_SECURE",False),
-        session_ttl_hours=max(1,env_int("SESSION_TTL_HOURS",24)),
+        session_ttl_hours=max(1,env_int("SESSION_TTL_HOURS",720)),
         allow_registration=env_bool("ALLOW_REGISTRATION",True),
         bootstrap_admin_username=os.getenv("BOOTSTRAP_ADMIN_USERNAME","admin").strip(),
         bootstrap_admin_password=os.getenv("BOOTSTRAP_ADMIN_PASSWORD",""),
