@@ -1,12 +1,22 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
-cd /d "%~dp0.."
+cd /d "%~dp0"
 title ASTRA SERVER
 
 echo =========================================
 echo ASTRA SERVER - TEK TIK KURULUM
 echo =========================================
 echo.
+echo Calisma klasoru: %CD%
+echo.
+
+if not exist "requirements.txt" (
+  echo HATA: requirements.txt bulunamadi.
+  echo Bu dosyayi repo ana klasorundeki KUR_VE_AC.bat ile calistir.
+  echo.
+  pause
+  exit /b 1
+)
 
 where py >nul 2>nul
 if errorlevel 1 (
@@ -17,19 +27,21 @@ if errorlevel 1 (
 )
 
 if not exist ".venv\Scripts\python.exe" (
-  echo [1/4] Python ortamı hazırlanıyor...
+  echo [1/4] Python ortami hazirlaniyor...
   py -3 -m venv .venv
   if errorlevel 1 goto fail
+) else (
+  echo [1/4] Mevcut Python ortami kullaniliyor.
 )
 
-echo [2/4] Paketler hazırlanıyor...
-".venv\Scripts\python.exe" -m pip install -r requirements.txt
+echo [2/4] Paketler hazirlaniyor...
+".venv\Scripts\python.exe" -m pip install -r "%CD%\requirements.txt"
 if errorlevel 1 goto fail
 
 if not exist ".env" (
-  echo [3/4] İlk ayarlar hazırlanıyor...
-  for /f "delims=" %%S in ('py -c "import secrets; print(secrets.token_urlsafe(48))"') do set "SECRET=%%S"
-  for /f "delims=" %%P in ('py -c "import secrets; print(secrets.token_urlsafe(10))"') do set "PASS=astra-%%P"
+  echo [3/4] Ilk ayarlar hazirlaniyor...
+  for /f "delims=" %%S in ('".venv\Scripts\python.exe" -c "import secrets; print(secrets.token_urlsafe(48))"') do set "SECRET=%%S"
+  for /f "delims=" %%P in ('".venv\Scripts\python.exe" -c "import secrets; print(secrets.token_urlsafe(10))"') do set "PASS=astra-%%P"
   (
     echo APP_NAME=Astra Server
     echo HOST=127.0.0.1
@@ -58,7 +70,7 @@ if not exist ".env" (
   echo [3/4] Mevcut ayarlar korunuyor.
 )
 
-echo [4/4] Astra açılıyor...
+echo [4/4] Astra aciliyor...
 start "ASTRA SERVER" /min cmd /c ""%CD%\.venv\Scripts\python.exe" -m app.main"
 timeout /t 2 /nobreak >nul
 start "" "http://127.0.0.1:8080"
@@ -71,6 +83,6 @@ exit /b 0
 
 :fail
 echo.
-echo Kurulum sırasında hata oluştu.
+echo Kurulum sirasinda hata olustu.
 pause
 exit /b 1
