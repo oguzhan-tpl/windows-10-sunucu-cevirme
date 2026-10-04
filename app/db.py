@@ -80,6 +80,16 @@ def init_db():
           created_at TEXT NOT NULL,
           FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE
         );
+        CREATE TABLE IF NOT EXISTS sessions(
+          token_hash TEXT PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          expires_at INTEGER NOT NULL,
+          created_at INTEGER NOT NULL,
+          last_seen_at INTEGER NOT NULL,
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
         CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id);
         CREATE INDEX IF NOT EXISTS idx_media_created ON media(created_at DESC);
         """)
@@ -119,6 +129,43 @@ def set_user_password(username,password):
             )
         else:
             c.execute("UPDATE users SET password_hash=? WHERE id=?",(hash_password(password),row["id"]))
+
+def create_auth_session(token_hash,user_id,expires_at,created_at):
+    with db() as c:
+        c.execute(
+            "INSERT INTO sessions(token_hash,user_id,expires_at,created_at,last_seen_at) VALUES(?,?,?,?,?)",
+            (token_hash,user_id,expires_at,created_at,created_at)
+        )
+
+def get_auth_session(token_hash):
+    with db() as c:
+        row=c.execute(
+            "SELECT s.token_hash,s.user_id,s.expires_at,u.username,u.role "
+            "FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?",
+            (token_hash,)
+        ).fetchone()
+        if not row:
+            return None
+        now=int(datetime.now(timezone.utc).timestamp())
+        if int(row["expires_at"]) <= now:
+            c.execute("DELETE FROM sessions WHERE token_hash=?",(token_hash,))
+            return None
+        return row
+
+def touch_auth_session(token_hash,expires_at,last_seen_at):
+    with db() as c:
+        c.execute(
+            "UPDATE sessions SET expires_at=?,last_seen_at=? WHERE token_hash=?",
+            (expires_at,last_seen_at,token_hash)
+        )
+
+def delete_auth_session(token_hash):
+    with db() as c:
+        c.execute("DELETE FROM sessions WHERE token_hash=?",(token_hash,))
+
+def delete_user_sessions(user_id):
+    with db() as c:
+        c.execute("DELETE FROM sessions WHERE user_id=?",(user_id,))
 
 def ensure_bootstrap(username,password,role):
     if not username or not password: return
