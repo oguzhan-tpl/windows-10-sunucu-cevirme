@@ -96,12 +96,17 @@ echo [5/6] Testing Astra startup...
 if errorlevel 1 goto error_startup
 
 echo.
-echo [6/7] Checking port 8080...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path '.').Path; $conns=Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue; foreach($c in $conns){$p=Get-CimInstance Win32_Process -Filter ('ProcessId='+$c.OwningProcess) -ErrorAction SilentlyContinue; if($p -and ($p.CommandLine -like ('*'+$root+'*app.main*') -or $p.CommandLine -like '*-m app.main*')){Write-Host ('Stopping old Astra process PID '+$c.OwningProcess); Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue}}"
+echo [6/7] Preparing listening port...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path '.').Path; $conns=Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue; foreach($c in $conns){$p=Get-CimInstance Win32_Process -Filter ('ProcessId='+$c.OwningProcess) -ErrorAction SilentlyContinue; if($p -and $p.CommandLine -like ('*'+$root+'*app.main*')){Write-Host ('Stopping old Astra process PID '+$c.OwningProcess); Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue}}"
 timeout /t 1 /nobreak >nul
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$c=Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue; if($c){$c | ForEach-Object {$p=Get-CimInstance Win32_Process -Filter ('ProcessId='+$_.OwningProcess) -ErrorAction SilentlyContinue; Write-Host ('Port 8080 is already in use. PID='+$_.OwningProcess); if($p){Write-Host ('Process='+$p.Name); Write-Host ('Command='+$p.CommandLine)}}; exit 1}"
+for /f "delims=" %%P in ('powershell -NoProfile -ExecutionPolicy Bypass -Command "$ports=8080..8099; foreach($p in $ports){if(-not (Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue)){Write-Output $p; break}}"') do set "ASTRA_PORT=%%P"
+if not defined ASTRA_PORT goto error_port
+set "PORT=!ASTRA_PORT!"
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$f='.env';$lines=@(Get-Content -LiteralPath $f -ErrorAction Stop);$found=$false;$out=foreach($line in $lines){if($line -match '^PORT='){ $found=$true; 'PORT='+$env:PORT } else { $line }};if(-not $found){$out += 'PORT='+$env:PORT};Set-Content -LiteralPath $f -Value $out -Encoding utf8"
 if errorlevel 1 goto error_port
+echo Astra will use localhost port !ASTRA_PORT!.
 
 echo.
 echo [7/7] Starting Astra core...
@@ -135,7 +140,7 @@ echo ASTRA IS RUNNING
 echo =========================================================
 echo ADMIN USER : admin
 echo ADMIN PASS : !PASS!
-echo LOCAL      : http://127.0.0.1:8080
+echo LOCAL      : http://127.0.0.1:!ASTRA_PORT!
 echo PUBLIC URL : ASTRA PUBLIC window / data\public-url.txt
 echo =========================================================
 echo.
