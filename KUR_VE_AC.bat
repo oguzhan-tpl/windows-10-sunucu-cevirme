@@ -71,7 +71,7 @@ if not exist ".env" (
     echo PORT=8080
     echo SERVER_SECRET=!SECRET!
     echo COOKIE_SECURE=false
-    echo SESSION_TTL_HOURS=24
+    echo SESSION_TTL_HOURS=720
     echo ALLOW_REGISTRATION=true
     echo BOOTSTRAP_ADMIN_USERNAME=admin
     echo BOOTSTRAP_ADMIN_PASSWORD=!PASS!
