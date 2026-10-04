@@ -262,46 +262,105 @@ def update_project(project_id, **fields):
         c.execute(f"UPDATE projects SET {sql} WHERE id=?", [*values.values(),project_id])
 
 
+def _tree_size(path:Path)->int:
+    total=0
+    if not path.exists():
+        return 0
+    try:
+        if path.is_file():
+            return path.stat().st_size
+        for item in path.rglob("*"):
+            try:
+                if item.is_file():
+                    total += item.stat().st_size
+            except OSError:
+                continue
+    except OSError:
+        return 0
+    return total
+
+
 def admin_usage():
-    """Return storage/database usage grouped by account for the admin console."""
-    import os
-    users = []
+    """Return account, project and database usage for the admin console."""
+    users=[]
     with db() as c:
-        rows = c.execute("""
-            SELECT u.id, u.username, u.role, u.created_at,
-                   COUNT(DISTINCT p.id) AS project_count
+        rows=c.execute("""
+            SELECT u.id,u.username,u.role,u.created_at,
+                   COUNT(DISTINCT p.id) AS project_count,
+                   (SELECT COUNT(*) FROM sessions s WHERE s.user_id=u.id AND s.expires_at>?) AS active_sessions
             FROM users u
             LEFT JOIN projects p ON p.owner_id=u.id
             GROUP BY u.id
             ORDER BY u.id
-        """).fetchall()
+        """,(int(datetime.now(timezone.utc).timestamp()),)).fetchall()
         for row in rows:
-            projects = c.execute(
-                "SELECT id,name,slug,db_path,port,status,created_at FROM projects WHERE owner_id=? ORDER BY id DESC",
+            projects=c.execute(
+                "SELECT id,name,slug,db_path,project_dir,port,status,pid,enabled,created_at FROM projects WHERE owner_id=? ORDER BY id DESC",
                 (row["id"],)
             ).fetchall()
-            db_bytes = 0
-            databases = []
+            db_bytes=0
+            project_storage_bytes=0
+            databases=[]
             for p in projects:
-                path = Path(p["db_path"])
-                size_bytes = path.stat().st_size if path.exists() else 0
+                db_path=Path(p["db_path"])
+                size_bytes=db_path.stat().st_size if db_path.exists() else 0
                 db_bytes += size_bytes
-                kv_count = 0
-                if path.exists():
+                project_storage_bytes += _tree_size(Path(p["project_dir"]).parent)
+                kv_count=0
+                if db_path.exists():
                     try:
-                        with sqlite3.connect(path) as pc:
-                            kv_count = pc.execute("SELECT COUNT(*) FROM kv").fetchone()[0]
+                        with sqlite3.connect(db_path) as pc:
+                            kv_count=pc.execute("SELECT COUNT(*) FROM kv").fetchone()[0]
                     except sqlite3.Error:
-                        kv_count = 0
+                        kv_count=0
                 databases.append({
-                    "id": p["id"], "name": p["name"], "slug": p["slug"],
-                    "size_bytes": size_bytes, "kv_records": kv_count,
-                    "port": p["port"], "status": p["status"], "created_at": p["created_at"]
+                    "id":p["id"],"name":p["name"],"slug":p["slug"],"size_bytes":size_bytes,
+                    "kv_records":kv_count,"port":p["port"],"status":p["status"],
+                    "pid":p["pid"],"enabled":bool(p["enabled"]),"created_at":p["created_at"],
+                    "local_path":str(db_path)
                 })
             users.append({
-                "id": row["id"], "username": row["username"], "role": row["role"],
-                "created_at": row["created_at"], "project_count": row["project_count"],
-                "database_count": len(databases), "database_bytes": db_bytes,
-                "databases": databases
+                "id":row["id"],"username":row["username"],"role":row["role"],
+                "created_at":row["created_at"],"project_count":row["project_count"],
+                "active_sessions":row["active_sessions"],"database_count":len(databases),
+                "database_bytes":db_bytes,"project_storage_bytes":project_storage_bytes,
+                "databases":databases
             })
     return users
+
+
+def list_all_projects():
+    with db() as c:
+        return c.execute("""
+            SELECT p.*,u.username AS owner_username,u.role AS owner_role
+            FROM projects p JOIN users u ON u.id=p.owner_id
+            ORDER BY p.id DESC
+        """).fetchall()
+
+
+def update_user(user_id,**fields):
+    allowed={"role","password_hash"}
+    values={k:v for k,v in fields.items() if k in allowed}
+    if not values:
+        return
+    sql=", ".join(f"{k}=?" for k in values)
+    with db() as c:
+        c.execute(f"UPDATE users SET {sql} WHERE id=?",[*values.values(),user_id])
+
+
+def delete_project(project_id):
+    with db() as c:
+        row=c.execute("SELECT * FROM projects WHERE id=?",(project_id,)).fetchone()
+        if not row:
+            return None
+        c.execute("DELETE FROM projects WHERE id=?",(project_id,))
+        return row
+
+
+def delete_user(user_id):
+    with db() as c:
+        row=c.execute("SELECT * FROM users WHERE id=?",(user_id,)).fetchone()
+        if not row:
+            return None
+        c.execute("DELETE FROM users WHERE id=?",(user_id,))
+        return row
