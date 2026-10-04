@@ -26,8 +26,12 @@ Astra çekirdeği internete doğrudan `0.0.0.0` üzerinden açılmaz. Dış eri�
 - ZIP yüklenince otomatik proje deploy
 - her projeye localhost portu
 - /apps/<slug>/ reverse proxy
-- panel içinde public Tunnel adresi
+- panel içinde sabit/temporary public Tunnel adresi
+- stabil hostname + named Cloudflare Tunnel desteği
 - router port forwarding gerektirmeyen dış erişim
+- admin kullanım analizi, kullanıcı/rol/şifre yönetimi
+- admin proje ve veritabanı yönetimi
+- aktif oturum ve disk kullanım görünümü
 - ilk çalıştırmada otomatik admin parolası üretimi
 - sağlık kontrolü ve otomatik başlangıç sıralaması
 
@@ -62,21 +66,29 @@ dosyasına da kaydedilir.
 
 ## Dışarıdan erişim
 
-`PUBLIC_AC.bat` Cloudflare Quick Tunnel başlatır.
+ASTRA dış dünyaya doğrudan Windows portu açmaz. Cloudflare Tunnel, public hostname'i yerel servis ve porta bağlar. Cloudflare'ın güncel dokümantasyonuna göre yayınlanan uygulama için Cloudflare üzerinde bir domain ve Published Application route gerekir. citeturn360909search2turn360909search4
 
-CMD içinde:
+Kalıcı kullanım için:
 
-`PUBLIC URL : https://....trycloudflare.com`
+1. Cloudflare DNS'e bağlı kendi domaininizi kullanın.
+2. Tunnel adını `sunucumon` bırakın.
+3. Örneğin `sunucumon.senin-domainin.com` hostname'ini Tunnel'a bağlayın.
+4. Published Application Service URL'sini `http://127.0.0.1:8080` yapın.
+5. Tunnel token'ını sadece kendi bilgisayarınızdaki `.env` dosyasına yazın.
+6. `KUR_VE_AC.bat` stable mode'da Astra'yı 8080 portunda tutar.
+7. `PUBLIC_AC.bat` public `/healthz` kontrolü yapar ve Tunnel watcher'ını çalıştırır.
 
-şeklinde gerçek internet adresi gösterilir ve:
+Örnek:
 
-`data\public-url.txt`
+~~~text
+PUBLIC_HOSTNAME=sunucum.senin-domainin.com
+CLOUDFLARE_TUNNEL_NAME=sunucumon
+CLOUDFLARE_TUNNEL_TOKEN=<sadece-lokal-.env>
+~~~
 
-dosyasına kaydedilir.
+**Önemli:** `sunucumon` tek başına internet üzerinde sihirli bir domain değildir. Stabil URL için sizin kontrol ettiğiniz bir domain/hostname gerekir. Quick Tunnel (`trycloudflare.com`) geçicidir ve yeniden başlatmada değişebilir. citeturn360909search2turn360909search9
 
-Panelde giriş yaptıktan sonra Genel Bakış bölümünde aynı adres gösterilir.
-
-Quick Tunnel geçici kullanım içindir. Kalıcı özel hostname için Cloudflare üzerinde normal bir Tunnel ve kendi hostname'inizi yapılandırmanız gerekir.
+Panel, stable hostname'i kullanıcıya gösterir ve tek tıkla kopyalanabilir. Windows makine ve Tunnel tekrar çevrimiçi olduğu sürece aynı adres kullanılabilir.
 
 ## Developer akışı
 
@@ -117,16 +129,34 @@ Developer paneli bağlantı bilgisini gösterir ve KV API sağlar:
 
 Ham SQLite dosyası public olarak servis edilmez.
 
+## Admin yönetimi
+
+Yönetim ekranı artık kaynak bazlıdır:
+
+- toplam kullanıcı, geliştirici, admin ve aktif oturum sayısı
+- kullanıcı başına proje ve veritabanı sayısı
+- kullanıcı proje alanı, DB alanı ve kota yüzdesi
+- veritabanının toplam depolamadaki payı
+- en çok alan kullanan kullanıcı
+- Windows diskinin toplam/kullanılan/boş alanı
+- tüm veritabanları: sahibi, kayıt sayısı, boyutu ve durumu
+- kullanıcı rolü değiştirme, şifre sıfırlama ve silme
+- proje durdurma ve proje/veritabanı silme
+- aktif adminin ve son admin hesabının yanlışlıkla silinmesini engelleyen korumalar
+
 ## Güvenlik
 
 - Session cookie HttpOnly + imzalıdır.
 - Parolalar scrypt ile hashlenir.
+- Admin rol/şifre değişikliğinde mevcut oturumlar iptal edilir.
 - Proje ZIP'lerinde path traversal kontrolü vardır.
 - Developer yalnızca kendi projelerine erişir.
 - Host üzerinde web panelinden genel amaçlı CMD/PowerShell çalıştırılmaz.
 - Proje uygulamaları localhost'ta tutulur ve Astra reverse proxy üzerinden yayınlanır.
+- GET/HEAD reverse-proxy trafiği belleğe tamamen alınmadan akış halinde iletilir.
 - Public URL'yi paylaşan herkes login sayfasına ulaşabilir; uygulama içeriği hesap yetkileriyle korunur.
-- Kalıcı internet yayınında Cloudflare Access, rate limiting, audit log, düşük yetkili Windows hesabı ve daha güçlü process izolasyonu eklenmesi önerilir.
+- Proje uygulamaları Windows hesabıyla çalıştığı için bu yapı tam güvenlik sandbox'ı değildir.
+- Kalıcı internet yayınında Cloudflare Access, rate limiting, audit log, düşük yetkili Windows hesabı ve daha güçlü process izolasyonu kullanılması önerilir.
 
 ## Geliştirme
 
