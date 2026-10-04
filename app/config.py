@@ -36,6 +36,8 @@ class Settings:
     max_app_upload_mb:int
     app_max_count:int
     app_proxy_body_max_mb:int
+    public_hostname:str
+    cloudflare_tunnel_token:str
 
 def load_settings():
     data=Path(os.getenv("DATA_DIR","./data")).resolve()
@@ -56,6 +58,8 @@ def load_settings():
         max_app_upload_mb=max(1,env_int("MAX_APP_UPLOAD_MB",128)),
         app_max_count=max(1,env_int("APP_MAX_COUNT",5)),
         app_proxy_body_max_mb=max(1,env_int("APP_PROXY_BODY_MAX_MB",16)),
+        public_hostname=os.getenv("PUBLIC_HOSTNAME","").strip(),
+        cloudflare_tunnel_token=os.getenv("CLOUDFLARE_TUNNEL_TOKEN","").strip(),
     )
     if not result.server_secret or result.server_secret=="change-this-to-a-long-random-secret":
         raise RuntimeError("SERVER_SECRET .env içinde güçlü bir değere ayarlanmalı.")
