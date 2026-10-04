@@ -140,6 +140,26 @@ async function dbInfo(slug){
   }catch(e){notify(e.message)}
 }
 
+async function adminOverview(){
+  const d=await api("/api/admin/overview");
+  const t=d.totals||{};
+  $("#admin-user-count").textContent=t.users||0;
+  $("#admin-db-count").textContent=t.databases||0;
+  $("#admin-db-size").textContent=(Number(t.database_mb)||0).toFixed(1)+" MB";
+  $("#admin-top-user").textContent=t.top_user||"-";
+  $("#admin-usage").innerHTML=d.users.length?d.users.map(u=>{
+    const dbs=(u.databases||[]).map(db=>
+      '<div class="data-row"><div class="data-cell"><strong>'+esc(db.name)+'</strong><span>'+esc(db.slug)+' · Port '+esc(db.port)+' · '+esc(db.kv_records)+' kayıt</span></div><div class="role-cell">'+esc(size(db.size_bytes))+'</div><div class="role-cell">'+esc(db.status)+'</div></div>'
+    ).join("");
+    return '<div class="usage-user">'+
+      '<div class="usage-head"><div><strong>'+esc(u.username)+'</strong><span>'+esc(roleLabel(u.role))+' · '+u.database_count+' veritabanı · '+size(u.database_bytes)+'</span></div>'+
+      '<strong>'+Number(u.storage_percent||0).toFixed(2)+'%</strong></div>'+
+      '<div class="usage-bar"><span style="width:'+Math.min(100,Number(u.storage_percent)||0)+'%"></span></div>'+
+      (dbs||'<div class="empty compact">Veritabanı yok.</div>')+
+    '</div>';
+  }).join(""):'<div class="empty">Kullanıcı bulunmuyor.</div>';
+}
+
 async function adminUsers(){
   const d=await api("/api/admin/users");
   $("#admin-users").innerHTML=d.items.length?d.items.map(u=>
@@ -164,7 +184,7 @@ async function enter(user){
   await media();
   await serverStatus();
   if(user.role==="developer")await projects();
-  if(user.role==="admin")await adminUsers();
+  if(user.role==="admin"){await adminUsers();await adminOverview();}
 
   const requested=location.hash.replace("#","");
   const allowed=["overview","media-section","developer-section","admin-section"];
