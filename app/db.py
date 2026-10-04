@@ -260,3 +260,48 @@ def update_project(project_id, **fields):
     sql=", ".join(f"{k}=?" for k in values)
     with db() as c:
         c.execute(f"UPDATE projects SET {sql} WHERE id=?", [*values.values(),project_id])
+
+
+def admin_usage():
+    """Return storage/database usage grouped by account for the admin console."""
+    import os
+    users = []
+    with db() as c:
+        rows = c.execute("""
+            SELECT u.id, u.username, u.role, u.created_at,
+                   COUNT(DISTINCT p.id) AS project_count
+            FROM users u
+            LEFT JOIN projects p ON p.owner_id=u.id
+            GROUP BY u.id
+            ORDER BY u.id
+        """).fetchall()
+        for row in rows:
+            projects = c.execute(
+                "SELECT id,name,slug,db_path,port,status,created_at FROM projects WHERE owner_id=? ORDER BY id DESC",
+                (row["id"],)
+            ).fetchall()
+            db_bytes = 0
+            databases = []
+            for p in projects:
+                path = Path(p["db_path"])
+                size_bytes = path.stat().st_size if path.exists() else 0
+                db_bytes += size_bytes
+                kv_count = 0
+                if path.exists():
+                    try:
+                        with sqlite3.connect(path) as pc:
+                            kv_count = pc.execute("SELECT COUNT(*) FROM kv").fetchone()[0]
+                    except sqlite3.Error:
+                        kv_count = 0
+                databases.append({
+                    "id": p["id"], "name": p["name"], "slug": p["slug"],
+                    "size_bytes": size_bytes, "kv_records": kv_count,
+                    "port": p["port"], "status": p["status"], "created_at": p["created_at"]
+                })
+            users.append({
+                "id": row["id"], "username": row["username"], "role": row["role"],
+                "created_at": row["created_at"], "project_count": row["project_count"],
+                "database_count": len(databases), "database_bytes": db_bytes,
+                "databases": databases
+            })
+    return users
