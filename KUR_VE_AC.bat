@@ -66,6 +66,8 @@ if not exist ".env" (
     echo APP_PROXY_BODY_MAX_MB=16
     echo PUBLIC_HOSTNAME=
     echo CLOUDFLARE_TUNNEL_TOKEN=
+    echo CLOUDFLARE_TUNNEL_NAME=sunucumon
+    echo USER_STORAGE_QUOTA_MB=2048
   ) > ".env"
 )
 
@@ -99,10 +101,34 @@ if errorlevel 1 goto error_startup
 
 echo.
 echo [6/7] Preparing listening port...
+set "ASTRA_PORT="
+set "PUBLIC_HOSTNAME="
+set "CLOUDFLARE_TUNNEL_TOKEN="
+if exist ".env" (
+  for /f "tokens=1,* delims==" %%A in ('findstr /b /c:"PUBLIC_HOSTNAME=" ".env" 2^>nul') do set "PUBLIC_HOSTNAME=%%B"
+  for /f "tokens=1,* delims==" %%A in ('findstr /b /c:"CLOUDFLARE_TUNNEL_TOKEN=" ".env" 2^>nul') do set "CLOUDFLARE_TUNNEL_TOKEN=%%B"
+)
+
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path '.').Path; $conns=Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue; foreach($c in $conns){$p=Get-CimInstance Win32_Process -Filter ('ProcessId='+$c.OwningProcess) -ErrorAction SilentlyContinue; if($p -and $p.CommandLine -like ('*'+$root+'*app.main*')){Write-Host ('Stopping old Astra process PID '+$c.OwningProcess); Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue}}"
 timeout /t 1 /nobreak >nul
 
+if defined PUBLIC_HOSTNAME if defined CLOUDFLARE_TUNNEL_TOKEN goto stable_port
 for /f "delims=" %%P in ('powershell -NoProfile -ExecutionPolicy Bypass -Command "$ports=8080..8099; foreach($p in $ports){if(-not (Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue)){Write-Output $p; break}}"') do set "ASTRA_PORT=%%P"
+goto port_ready
+
+:stable_port
+set "ASTRA_PORT=8080"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "if(Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue){exit 1}else{exit 0}"
+if errorlevel 1 goto stable_port_busy
+echo Stable Cloudflare mode detected: Astra port locked to 8080.
+goto port_ready
+
+:stable_port_busy
+echo ERROR: Stable Cloudflare mode requires localhost port 8080.
+echo Port 8080 is occupied by another application. Stop that application and run again.
+goto error_port
+
+:port_ready
 if not defined ASTRA_PORT goto error_port
 set "PORT=!ASTRA_PORT!"
 
