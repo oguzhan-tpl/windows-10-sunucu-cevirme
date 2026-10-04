@@ -3,16 +3,17 @@ setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 title ASTRA SERVER
 
-echo =========================================
-echo ASTRA SERVER - TEK TIK KURULUM
-echo =========================================
+echo =========================================================
+echo ASTRA SERVER
+echo ONE-CLICK INSTALL AND PUBLIC ACCESS
+echo =========================================================
 echo.
-echo Calisma klasoru: %CD%
+echo ROOT: %CD%
 echo.
 
 if not exist "requirements.txt" (
-  echo HATA: requirements.txt bulunamadi.
-  echo Bu dosyayi repo ana klasorundeki KUR_VE_AC.bat ile calistir.
+  echo ERROR: requirements.txt not found.
+  echo Run KUR_VE_AC.bat from the repository root.
   echo.
   pause
   exit /b 1
@@ -20,28 +21,32 @@ if not exist "requirements.txt" (
 
 where py >nul 2>nul
 if errorlevel 1 (
-  echo Python 3 bulunamadi.
-  echo Python 3.12+ kurduktan sonra bu dosyayi tekrar ac.
+  echo ERROR: Python launcher "py" was not found.
+  echo Install Python 3.12+ and run this file again.
+  echo.
   pause
   exit /b 1
 )
 
+echo [1/6] Python environment...
 if not exist ".venv\Scripts\python.exe" (
-  echo [1/5] Python ortami hazirlaniyor...
-  py -3 -m venv .venv
+  py -3 -m venv ".venv"
   if errorlevel 1 goto fail
 ) else (
-  echo [1/5] Mevcut Python ortami kullaniliyor.
+  echo Existing environment found.
 )
 
-echo [2/5] Paketler hazirlaniyor...
-".venv\Scripts\python.exe" -m pip install -r "%CD%\requirements.txt"
+echo.
+echo [2/6] Installing packages...
+".venv\Scripts\python.exe" -m pip install --disable-pip-version-check -r "%CD%\requirements.txt"
 if errorlevel 1 goto fail
 
+echo.
+echo [3/6] Preparing administrator account...
 if not exist ".env" (
-  echo [3/5] Ilk ayarlar hazirlaniyor...
-  for /f "delims=" %%S in ('".venv\Scripts\python.exe" -c "import secrets; print(secrets.token_urlsafe(48))"') do set "SECRET=%%S"
-  for /f "delims=" %%P in ('".venv\Scripts\python.exe" -c "import secrets; print(secrets.token_urlsafe(10))"') do set "PASS=astra-%%P"
+  for /f "delims=" %%S in ('py -3 -c "import secrets; print(secrets.token_urlsafe(48))"') do set "SECRET=%%S"
+  for /f "delims=" %%P in ('py -3 -c "import secrets; print('Astra-'+secrets.token_urlsafe(12))"') do set "PASS=%%P"
+
   (
     echo APP_NAME=Astra Server
     echo HOST=127.0.0.1
@@ -59,38 +64,88 @@ if not exist ".env" (
     echo MAX_APP_UPLOAD_MB=128
     echo APP_MAX_COUNT=5
     echo APP_PROXY_BODY_MAX_MB=16
-  ) > .env
-  if not exist data mkdir data
+  ) > ".env"
+
+  if not exist "data" mkdir "data"
   (
-    echo Astra Server ilk yonetici hesabi
-    echo Kullanici: admin
-    echo Sifre: !PASS!
-  ) > data\admin-credentials.txt
+    echo Astra Server administrator credentials
+    echo Username=admin
+    echo Password=!PASS!
+  ) > "data\admin-credentials.txt"
 ) else (
-  echo [3/5] Mevcut ayarlar korunuyor.
+  set "PASS="
+  if exist "data\admin-credentials.txt" (
+    for /f "tokens=1,* delims==" %%A in ('findstr /b /c:"Password=" "data\admin-credentials.txt"') do set "PASS=%%B"
+  )
+  if not defined PASS (
+    for /f "tokens=1,* delims==" %%A in ('findstr /b /c:"BOOTSTRAP_ADMIN_PASSWORD=" ".env"') do set "PASS=%%B"
+  )
 )
 
-echo [4/5] Cloudflare Tunnel hazirlaniyor...
+if not defined PASS set "PASS=(existing admin account - password unchanged)"
+
+echo.
+echo ---------------------------------------------------------
+echo ADMIN LOGIN
+echo Username : admin
+echo Password : !PASS!
+echo Credentials file: %CD%\data\admin-credentials.txt
+echo ---------------------------------------------------------
+echo.
+
+echo [4/6] Installing Cloudflare Tunnel...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\install_cloudflared.ps1"
 if errorlevel 1 goto fail
 
-echo [5/5] Astra ve public tunnel aciliyor...
+echo.
+echo [5/6] Starting Astra core...
 start "ASTRA SERVER" /min cmd /c ""%CD%\.venv\Scripts\python.exe" -m app.main"
-timeout /t 3 /nobreak >nul
+
+set "READY=0"
+for /l %%T in (1,1,15) do (
+  powershell -NoProfile -Command "try { $r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/healthz -TimeoutSec 2; if($r.StatusCode -eq 200){exit 0}else{exit 1} } catch { exit 1 }" >nul 2>nul
+  if not errorlevel 1 (
+    set "READY=1"
+    goto server_ready
+  )
+  timeout /t 1 /nobreak >nul
+)
+
+:server_ready
+if "!READY!"=="0" (
+  echo ERROR: Astra did not become ready on 127.0.0.1:8080.
+  echo Open the ASTRA SERVER window and check the error.
+  goto fail
+)
+
+echo Astra core is ONLINE.
+
+echo.
+echo [6/6] Starting public access...
 start "ASTRA PUBLIC" cmd /c ""%CD%\PUBLIC_AC.bat""
 timeout /t 2 /nobreak >nul
 start "" "http://127.0.0.1:8080"
 
 echo.
-echo Astra acildi.
-echo Public adres, ASTRA PUBLIC penceresinde gorunecek.
-echo Admin bilgileri: data\admin-credentials.txt
+echo =========================================================
+echo ASTRA IS RUNNING
+echo =========================================================
+echo ADMIN USER : admin
+echo ADMIN PASS : !PASS!
+echo LOCAL      : http://127.0.0.1:8080
+echo PUBLIC URL : See the ASTRA PUBLIC window.
+echo.
+echo Keep ASTRA SERVER and ASTRA PUBLIC windows running.
+echo Close them to stop the service and public access.
+echo =========================================================
 echo.
 pause
 exit /b 0
 
 :fail
 echo.
-echo Kurulum sirasinda hata olustu.
+echo =========================================================
+echo INSTALLATION FAILED
+echo =========================================================
 pause
 exit /b 1
