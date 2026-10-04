@@ -1,47 +1,68 @@
 from __future__ import annotations
-import base64
+
 import hashlib
-import hmac
-import json
+import secrets
 import time
+
 from fastapi import HTTPException, Request
+
 from .config import settings
-from .db import get_user
+from .db import (
+    create_auth_session,
+    delete_auth_session,
+    get_auth_session,
+    get_user,
+    touch_auth_session,
+)
 
 COOKIE_NAME="astra_session"
+SESSION_REFRESH_WINDOW=60 * 60 * 24 * 7
+BROWSER_MAX_AGE=60 * 60 * 24 * 365
 
-def _b64(data:bytes)->str:
-    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
-
-def _unb64(value:str)->bytes:
-    return base64.urlsafe_b64decode(value+"="*(-len(value)%4))
+def _hash_token(token:str)->str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 def create_session(user_id:int)->str:
-    payload={"uid":user_id,"exp":int(time.time())+settings.session_ttl_hours*3600}
-    raw=_b64(json.dumps(payload,separators=(",",":")).encode())
-    sig=_b64(hmac.new(settings.server_secret.encode(),raw.encode(),hashlib.sha256).digest())
-    return raw+"."+sig
+    token=secrets.token_urlsafe(48)
+    now=int(time.time())
+    expires=now + settings.session_ttl_hours * 3600
+    create_auth_session(_hash_token(token),user_id,expires,now)
+    return token
+
+def revoke_session(token:str|None):
+    if token:
+        delete_auth_session(_hash_token(token))
 
 def current_user(request:Request):
     token=request.cookies.get(COOKIE_NAME)
     if not token:
         return None
-    try:
-        raw,sig=token.split(".",1)
-        expected=_b64(hmac.new(settings.server_secret.encode(),raw.encode(),hashlib.sha256).digest())
-        if not hmac.compare_digest(sig,expected):
-            return None
-        payload=json.loads(_unb64(raw))
-        if int(payload["exp"])<int(time.time()):
-            return None
-        return get_user(int(payload["uid"]))
-    except Exception:
+    session=get_auth_session(_hash_token(token))
+    if not session:
         return None
+
+    user=get_user(int(session["user_id"]))
+    if not user:
+        revoke_session(token)
+        return None
+
+    now=int(time.time())
+    remaining=int(session["expires_at"])-now
+
+    # Sliding session: an active user gets a fresh TTL instead of being
+    # unexpectedly logged out while working.
+    if remaining <= SESSION_REFRESH_WINDOW:
+        touch_auth_session(
+            _hash_token(token),
+            now + settings.session_ttl_hours * 3600,
+            now,
+        )
+    return user
 
 def require_user(request:Request):
     user=current_user(request)
     if not user:
-        raise HTTPException(401,"Oturum gerekli.")
+        raise HTTPException(401,"Oturum geçersiz veya süresi dolmuş. Lütfen tekrar giriş yapın.")
     return user
 
 def require_role(request:Request,*roles:str):
