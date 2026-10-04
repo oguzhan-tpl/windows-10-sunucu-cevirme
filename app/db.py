@@ -83,16 +83,42 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id);
         CREATE INDEX IF NOT EXISTS idx_media_created ON media(created_at DESC);
         """)
-    for column,definition in [
-        ("status","TEXT NOT NULL DEFAULT 'stopped'"),
-        ("pid","INTEGER"),
-        ("entrypoint","TEXT NOT NULL DEFAULT 'main:app'"),
-        ("last_error","TEXT")
-    ]:
-        try:
-            c.execute(f"ALTER TABLE projects ADD COLUMN {column} {definition}")
-        except sqlite3.OperationalError:
-            pass
+        existing={row["name"] for row in c.execute("PRAGMA table_info(projects)").fetchall()}
+        migrations={
+            "status":"TEXT NOT NULL DEFAULT 'stopped'",
+            "pid":"INTEGER",
+            "entrypoint":"TEXT NOT NULL DEFAULT 'main:app'",
+            "last_error":"TEXT",
+        }
+        for column,definition in migrations.items():
+            if column not in existing:
+                c.execute(f"ALTER TABLE projects ADD COLUMN {column} {definition}")
+
+
+def ensure_bootstrap(username,password,role):
+    if not username or not password:
+        return
+    with db() as c:
+        if c.execute("SELECT 1 FROM users WHERE username=? COLLATE NOCASE",(username,)).fetchone():
+            return
+        c.execute(
+            "INSERT INTO users(username,password_hash,role,created_at) VALUES(?,?,?,?)",
+            (username,hash_password(password),role,now_iso())
+        )
+
+
+def set_user_password(username,password):
+    if not username or not password:
+        raise ValueError("Kullanıcı adı ve şifre boş olamaz.")
+    with db() as c:
+        row=c.execute("SELECT id FROM users WHERE username=? COLLATE NOCASE",(username,)).fetchone()
+        if not row:
+            c.execute(
+                "INSERT INTO users(username,password_hash,role,created_at) VALUES(?,?,?,?)",
+                (username,hash_password(password),"admin" if username.lower()=="admin" else "user",now_iso())
+            )
+        else:
+            c.execute("UPDATE users SET password_hash=? WHERE id=?",(hash_password(password),row["id"]))
 
 def ensure_bootstrap(username,password,role):
     if not username or not password: return
