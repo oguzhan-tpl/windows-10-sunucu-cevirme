@@ -185,6 +185,17 @@
           </div>
 
           <section class="panel-card admin-table-card">
+            <div class="panel-head"><div><div class="eyebrow">SİSTEM ANALİZİ</div><h2>Kullanım özeti</h2><p>Kullanıcı, proje ve veritabanı kullanımını tek ekranda izleyin.</p></div><button id="refresh-admin" class="button light small" type="button">Yenile</button></div>
+            <div class="summary-grid admin-summary">
+              <article class="metric"><div><span>Kullanıcı</span><small>Toplam hesap</small></div><strong id="admin-user-count">0</strong></article>
+              <article class="metric"><div><span>Veritabanı</span><small>Toplam proje DB</small></div><strong id="admin-db-count">0</strong></article>
+              <article class="metric"><div><span>Depolama</span><small>Veritabanı toplamı</small></div><strong id="admin-db-size">0 MB</strong></article>
+              <article class="metric"><div><span>En aktif</span><small>En fazla DB alanı kullanan</small></div><strong id="admin-top-user">-</strong></article>
+            </div>
+            <div id="admin-usage" class="data-list"></div>
+          </section>
+
+          <section class="panel-card admin-table-card">
             <div class="panel-head"><div><div class="eyebrow">HESAP LİSTESİ</div><h2>Kullanıcılar</h2></div></div>
             <div id="admin-users" class="data-list"></div>
           </section>
