@@ -73,12 +73,26 @@ def init_db():
           project_dir TEXT NOT NULL,
           port INTEGER NOT NULL,
           enabled INTEGER NOT NULL DEFAULT 1,
+          status TEXT NOT NULL DEFAULT 'stopped',
+          pid INTEGER,
+          entrypoint TEXT NOT NULL DEFAULT 'main:app',
+          last_error TEXT,
           created_at TEXT NOT NULL,
           FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id);
         CREATE INDEX IF NOT EXISTS idx_media_created ON media(created_at DESC);
         """)
+    for column,definition in [
+        ("status","TEXT NOT NULL DEFAULT 'stopped'"),
+        ("pid","INTEGER"),
+        ("entrypoint","TEXT NOT NULL DEFAULT 'main:app'"),
+        ("last_error","TEXT")
+    ]:
+        try:
+            c.execute(f"ALTER TABLE projects ADD COLUMN {column} {definition}")
+        except sqlite3.OperationalError:
+            pass
 
 def ensure_bootstrap(username,password,role):
     if not username or not password: return
@@ -170,3 +184,12 @@ def set_project_kv(project,key,value):
     with sqlite3.connect(Path(project["db_path"])) as c:
         c.execute("INSERT INTO kv(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",(key,value,now_iso()))
         c.commit()
+
+
+def update_project(project_id, **fields):
+    allowed={"status","pid","entrypoint","last_error","enabled","port"}
+    values={k:v for k,v in fields.items() if k in allowed}
+    if not values: return
+    sql=", ".join(f"{k}=?" for k in values)
+    with db() as c:
+        c.execute(f"UPDATE projects SET {sql} WHERE id=?", [*values.values(),project_id])
