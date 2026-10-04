@@ -196,12 +196,40 @@ def owned(request: Request, slug: str):
     return u, p
 
 
+@app.get("/api/server/status")
+async def server_status(request: Request):
+    require_user(request)
+    url_file = settings.data_dir / "public-url.txt"
+    public_url = ""
+    if url_file.exists():
+        try:
+            public_url = url_file.read_text("utf-8").strip()
+        except OSError:
+            public_url = ""
+    return {
+        "ok": True,
+        "local_url": "http://127.0.0.1:" + str(settings.port),
+        "public_url": public_url,
+        "url": public_url,
+        "tunnel": bool(public_url),
+    }
+
+
 @app.get("/api/projects")
 async def projects(request: Request):
     u = require_role(request, "developer")
     return {"items": [
-        {"id": p["id"], "name": p["name"], "slug": p["slug"], "port": p["port"], "enabled": bool(p["enabled"]),
-         "app_url": "/apps/" + p["slug"] + "/", "database_url": "/api/projects/" + p["slug"] + "/database"}
+        {
+            "id": p["id"],
+            "name": p["name"],
+            "slug": p["slug"],
+            "port": p["port"],
+            "enabled": bool(p["enabled"]),
+            "status": p["status"],
+            "last_error": p["last_error"],
+            "app_url": "/apps/" + p["slug"] + "/",
+            "database_url": "/api/projects/" + p["slug"] + "/database"
+        }
         for p in list_projects(u["id"])
     ]}
 
@@ -282,10 +310,19 @@ async def source_upload(request: Request, slug: str, file: UploadFile = File(...
                 if size > limit:
                     raise HTTPException(413, "Proje ZIP boyutu sınırı aşıldı.")
                 out.write(chunk)
-        app_dir = Path(p["project_dir"])
-        zip_extract_safe(temp, app_dir)
-        return {"ok": True, "path": str(app_dir), "port": p["port"],
-                "command": "python -m uvicorn main:app --host 127.0.0.1 --port " + str(p["port"])}
+        await deploy_async(p, temp)
+        latest = get_project(p["id"])
+        return {
+            "ok": True,
+            "status": latest["status"],
+            "port": latest["port"],
+            "app_url": "/apps/" + latest["slug"] + "/",
+            "log_file": str(Path(latest["project_dir"]).parent / "logs" / "app.log"),
+            "last_error": latest["last_error"],
+        }
+    except Exception as exc:
+        latest = get_project(p["id"])
+        raise HTTPException(400, latest["last_error"] or str(exc))
     finally:
         temp.unlink(missing_ok=True)
         await file.close()
