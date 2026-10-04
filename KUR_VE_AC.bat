@@ -113,8 +113,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\install_cloudf
 if errorlevel 1 goto fail
 
 echo.
-echo [5/6] Starting Astra core...
-start "ASTRA SERVER" /min cmd /c ""%CD%\.venv\Scripts\python.exe" -m app.main"
+echo [5/6] Running real startup preflight...
+".venv\Scripts\python.exe" "%CD%\scripts\check_startup.py"
+if errorlevel 1 (
+  echo.
+  echo ERROR: Astra startup preflight failed.
+  goto diagnostics
+)
+
+echo.
+echo [6/7] Starting Astra core...
+if exist "data\startup.log" del /q "data\startup.log" >nul 2>nul
+start "ASTRA SERVER" /min "%ComSpec%" /c call "%CD%\scripts\start_core.bat"
 
 set "READY=0"
 for /l %%T in (1,1,20) do (
@@ -138,7 +148,7 @@ if "!READY!"=="0" (
 echo Astra core is ONLINE.
 
 echo.
-echo [6/6] Starting public access...
+echo [7/7] Starting public access...
 start "ASTRA PUBLIC" cmd /c ""%CD%\PUBLIC_AC.bat""
 timeout /t 2 /nobreak >nul
 start "" "http://127.0.0.1:8080"
