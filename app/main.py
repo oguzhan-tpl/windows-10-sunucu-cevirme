@@ -20,7 +20,7 @@ from .db import (
     create_media, create_project, create_user, db, delete_media, get_media,
     get_project, get_project_by_slug, get_user_by_username, init_db,
     list_media, list_projects, list_users, list_all_projects, project_kv_path, set_project_kv,
-    verify_password, ensure_bootstrap, admin_usage, update_user, delete_project, delete_user,
+    verify_password, ensure_bootstrap, admin_usage, update_user, delete_project, delete_user, delete_user_sessions,
     hash_password,
 )
 from .security import BROWSER_MAX_AGE, COOKIE_NAME, create_session, require_role, require_user, revoke_session
@@ -273,6 +273,8 @@ async def admin_update_user(user_id:int, request:Request, body:UserUpdate):
     if body.role is not None: fields["role"]=body.role
     if body.password is not None: fields["password_hash"]=hash_password(body.password)
     update_user(user_id,**fields)
+    if body.password is not None or body.role is not None:
+        delete_user_sessions(user_id)
     return {"ok":True}
 
 
