@@ -15,21 +15,21 @@ if not exist "requirements.txt" goto error_root
 where py >nul 2>nul
 if errorlevel 1 goto error_python
 
+echo [1/6] Python environment...
 if not exist ".venv\Scripts\python.exe" (
-  echo [1/7] Python environment...
   py -3 -m venv ".venv"
   if errorlevel 1 goto error_venv
 ) else (
-  echo [1/7] Python environment: OK
+  echo Python environment: OK
 )
 
 echo.
-echo [2/7] Installing packages...
+echo [2/6] Installing packages...
 ".venv\Scripts\python.exe" -m pip install --disable-pip-version-check -r "%CD%\requirements.txt"
 if errorlevel 1 goto error_pip
 
 echo.
-echo [3/7] Preparing administrator account...
+echo [3/6] Preparing administrator account...
 if not exist "data" mkdir "data"
 set "PASS="
 
@@ -86,17 +86,17 @@ echo Credentials: %CD%\data\admin-credentials.txt
 echo ---------------------------------------------------------
 echo.
 
-echo [4/7] Checking Cloudflare Tunnel...
+echo [4/6] Checking Cloudflare Tunnel...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\install_cloudflared.ps1"
 if errorlevel 1 goto error_cloudflare
 
 echo.
-echo [5/7] Testing Astra startup lifecycle...
-".venv\Scripts\python.exe" "%CD%\scripts\check_startup.py"
+echo [5/6] Testing Astra startup...
+".venv\Scripts\python.exe" -c "from fastapi.testclient import TestClient; from app.main import app; c=TestClient(app); c.__enter__(); r=c.get('/healthz'); print('Startup check:',r.status_code,r.json()); c.__exit__(None,None,None); raise SystemExit(0 if r.status_code==200 and r.json().get('ok') else 1)"
 if errorlevel 1 goto error_startup
 
 echo.
-echo [6/7] Starting Astra core...
+echo Starting Astra core...
 if exist "data\startup.log" del /q "data\startup.log" >nul 2>nul
 start "ASTRA SERVER" /min "%ComSpec%" /c call "%CD%\scripts\start_core.bat"
 
@@ -116,7 +116,7 @@ goto error_core
 echo Astra core is ONLINE.
 
 echo.
-echo [7/7] Starting public access...
+echo [6/6] Starting public access...
 start "ASTRA PUBLIC" /min "%ComSpec%" /c call "%CD%\PUBLIC_AC.bat"
 timeout /t 2 /nobreak >nul
 start "" "http://127.0.0.1:8080"
@@ -168,7 +168,7 @@ goto failure
 
 :error_startup
 echo ERROR: Astra startup lifecycle test failed.
-goto show_log
+goto failure
 
 :error_core
 echo ERROR: Astra did not become ready on 127.0.0.1:8080.
