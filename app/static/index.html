@@ -1,44 +1,31 @@
 <!doctype html>
 <html lang="tr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Astra Server</title>
-<link rel="stylesheet" href="/static/style.css">
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#eef2f6"><title>Astra Server</title><link rel="stylesheet" href="/static/style.css"></head>
 <body>
 <main class="wrap">
-<header><div><div class="kicker">ASTRA SERVER</div><h1>Windows 10 kişisel servis ağı</h1></div><span id="who">Misafir</span></header>
-
-<section id="auth">
+<section id="auth" class="auth-grid">
+<div class="auth-brand"><div class="mark">AS</div><div class="kicker">ASTRA SERVER</div><h1>Kişisel sunucu kontrol merkezi</h1><p>Windows 10 üzerinde sade, hızlı ve tek merkezden yönetilen servis platformu.</p></div>
 <div class="cols">
-<form id="login" class="card"><h2>Giriş</h2><input id="lu" placeholder="Kullanıcı adı" required><input id="lp" type="password" placeholder="Şifre" required><button>Giriş</button></form>
-<form id="register" class="card"><h2>Hesap</h2><input id="ru" placeholder="Kullanıcı adı" required><input id="rp" type="password" placeholder="En az 8 karakter" required><button>Kayıt ol</button></form>
+<form id="login" class="card stack"><div class="section-title"><h2>Giriş yap</h2><span class="pill">secure</span></div><div class="field"><label>Kullanıcı adı</label><input id="lu" autocomplete="username" required></div><div class="field"><label>Şifre</label><input id="lp" type="password" autocomplete="current-password" required></div><button class="btn primary">Giriş yap</button></form>
+<form id="register" class="card stack"><div class="section-title"><h2>Yeni hesap</h2><span class="pill">user</span></div><div class="field"><label>Kullanıcı adı</label><input id="ru" required></div><div class="field"><label>Şifre</label><input id="rp" type="password" autocomplete="new-password" required></div><button class="btn">Kayıt ol</button></form>
 </div>
+<div class="footer-note">Astra · localhost çekirdeği · tunnel ile dış erişim</div>
 </section>
 
-<section id="app" class="hidden">
-<div class="stats"><div class="card"><small>Rol</small><strong id="role">-</strong></div><div class="card"><small>Medya</small><strong id="mc">0</strong></div><div class="card"><small>Durum</small><strong>ONLINE</strong></div></div>
+<section id="dashboard" class="hidden panel">
+<header class="topbar"><div class="brand"><div class="mark">AS</div><div><div class="kicker">ASTRA SERVER</div><h1>Kontrol merkezi</h1></div></div><div class="account"><span id="who" class="account-name">Misafir</span><span id="role" class="pill">-</span><button id="out" class="btn small soft">Çıkış</button></div></header>
+
+<div class="stats"><article class="card stat"><small>Medya</small><strong id="mc">0</strong></article><article class="card stat"><small>Rol</small><strong id="role-stat">-</strong></article><article class="card stat"><small>Çekirdek</small><strong>ONLINE</strong></article></div>
 
 <div class="cols">
-<section class="card"><div class="head"><h2>Medya</h2><button id="refresh" class="ghost">Yenile</button></div><div id="media" class="list"></div></section>
-
-<section id="dev" class="card hidden">
-<div class="head"><h2>Developer</h2><span class="muted">proje alanları</span></div>
-<form id="project" class="row"><input id="pn" placeholder="Proje adı" required><button>Oluştur</button></form>
-<div id="projects" class="list"></div>
-</section>
+<section class="card"><div class="section-head"><div class="section-title"><h2>Medya arşivi</h2><span class="muted">Yönetici yayınları</span></div><button id="refresh" class="btn small soft">Yenile</button></div><div id="media" class="list"></div></section>
+<section id="dev" class="card hidden"><div class="section-head"><div class="section-title"><h2>Developer alanı</h2><span class="muted">kişisel projeler</span></div></div><div class="notice">Her proje ayrı klasör, SQLite dosyası ve localhost portuyla çalışır.</div><form id="project" class="stack" style="margin-top:12px"><input id="pn" placeholder="Proje adı" required><button class="btn primary">Proje oluştur</button></form><div id="projects" class="project-grid" style="margin-top:12px"></div></section>
 </div>
 
-<section id="admin" class="card hidden">
-<div class="head"><h2>Admin</h2><span class="muted">medya ve hesap yönetimi</span></div>
-<form id="upload" class="row"><input id="mt" placeholder="Film / video başlığı" required><input id="mf" type="file" required><button>Yükle</button></form>
-<div id="admin-media" class="list"></div>
-<hr>
-<div id="admin-users" class="list"></div><form id="new-user" class="row admin-user"><input id="nu" placeholder="Yeni kullanıcı adı" required><input id="np" type="password" placeholder="Şifre" required><select id="nr"><option value="user">user</option><option value="developer">developer</option><option value="admin">admin</option></select><button>Hesap aç</button></form>
-</section>
-
-<button id="out" class="danger">Çıkış</button>
+<section id="admin" class="card hidden"><div class="section-head"><div class="section-title"><h2>Yönetici</h2><span class="muted">medya ve hesap yönetimi</span></div></div><div class="cols">
+<form id="upload" class="stack"><div class="field"><label>Medya başlığı</label><input id="mt" required></div><div class="field"><label>Dosya</label><input id="mf" type="file" required></div><button class="btn primary">Medya yükle</button></form>
+<div class="admin-grid"><form id="new-user" class="stack"><div class="field"><label>Kullanıcı adı</label><input id="nu" required></div><div class="field"><label>Şifre</label><input id="np" type="password" required></div><div class="field"><label>Rol</label><select id="nr"><option value="user">user</option><option value="developer">developer</option><option value="admin">admin</option></select></div><button class="btn">Hesap aç</button></form><div id="admin-users" class="list"></div></div>
+</div><div class="hr"></div><div id="admin-media" class="list"></div></section>
 </section>
 </main>
 <script src="/static/app.js"></script>
