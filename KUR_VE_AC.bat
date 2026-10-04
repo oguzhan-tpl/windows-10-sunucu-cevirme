@@ -15,7 +15,7 @@ if not exist "requirements.txt" goto error_root
 where py >nul 2>nul
 if errorlevel 1 goto error_python
 
-echo [1/6] Python environment...
+echo [1/7] Python environment...
 if not exist ".venv\Scripts\python.exe" (
   py -3 -m venv ".venv"
   if errorlevel 1 goto error_venv
@@ -24,12 +24,12 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 echo.
-echo [2/6] Installing packages...
+echo [2/7] Installing packages...
 ".venv\Scripts\python.exe" -m pip install --disable-pip-version-check -r "%CD%\requirements.txt"
 if errorlevel 1 goto error_pip
 
 echo.
-echo [3/6] Preparing administrator account...
+echo [3/7] Preparing administrator account...
 if not exist "data" mkdir "data"
 set "PASS="
 
@@ -86,12 +86,12 @@ echo Credentials: %CD%\data\admin-credentials.txt
 echo ---------------------------------------------------------
 echo.
 
-echo [4/6] Checking Cloudflare Tunnel...
+echo [4/7] Checking Cloudflare Tunnel...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\install_cloudflared.ps1"
 if errorlevel 1 goto error_cloudflare
 
 echo.
-echo [5/6] Testing Astra startup...
+echo [5/7] Testing Astra startup...
 ".venv\Scripts\python.exe" -c "from fastapi.testclient import TestClient; from app.main import app; c=TestClient(app); c.__enter__(); r=c.get('/healthz'); print('Startup check:',r.status_code,r.json()); c.__exit__(None,None,None); raise SystemExit(0 if r.status_code==200 and r.json().get('ok') else 1)"
 if errorlevel 1 goto error_startup
 
@@ -129,10 +129,10 @@ goto error_core
 echo Astra core is ONLINE.
 
 echo.
-echo [6/6] Starting public access...
+echo Starting public access...
 start "ASTRA PUBLIC" /min "%ComSpec%" /c call "%CD%\PUBLIC_AC.bat"
 timeout /t 2 /nobreak >nul
-start "" "http://127.0.0.1:8080"
+start "" "http://127.0.0.1:!ASTRA_PORT!"
 
 echo.
 echo =========================================================
@@ -188,8 +188,8 @@ echo ERROR: Astra did not become ready on 127.0.0.1:!ASTRA_PORT!.
 goto show_log
 
 :error_port
-echo ERROR: Port 8080 is occupied by another program.
-echo Close that program and run KUR_VE_AC.bat again.
+echo ERROR: No free Astra port was found in the 8080-8099 range.
+echo Stop the program using the required ports and run KUR_VE_AC.bat again.
 goto show_log
 
 
