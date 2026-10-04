@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0.."
 title ASTRA SERVER
 
@@ -34,12 +34,12 @@ if not exist ".env" (
     echo APP_NAME=Astra Server
     echo HOST=127.0.0.1
     echo PORT=8080
-    echo SERVER_SECRET=%%SECRET%%
+    echo SERVER_SECRET=!SECRET!
     echo COOKIE_SECURE=false
     echo SESSION_TTL_HOURS=24
     echo ALLOW_REGISTRATION=true
     echo BOOTSTRAP_ADMIN_USERNAME=admin
-    echo BOOTSTRAP_ADMIN_PASSWORD=%%PASS%%
+    echo BOOTSTRAP_ADMIN_PASSWORD=!PASS!
     echo DATA_DIR=./data
     echo MEDIA_DIR=./data/media
     echo PROJECTS_DIR=./data/projects
@@ -52,7 +52,7 @@ if not exist ".env" (
   (
     echo Astra Server ilk yonetici hesabi
     echo Kullanici: admin
-    echo Sifre: %%PASS%%
+    echo Sifre: !PASS!
   ) > data\admin-credentials.txt
 ) else (
   echo [3/4] Mevcut ayarlar korunuyor.
