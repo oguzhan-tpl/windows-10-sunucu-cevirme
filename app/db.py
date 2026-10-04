@@ -12,7 +12,8 @@ from .config import settings
 
 META_DB=settings.data_dir/"server.sqlite3"
 
-def now_iso(): return datetime.now(timezone.utc).isoformat()
+def now_iso():
+    return datetime.now(timezone.utc).isoformat()
 
 def connect(path:Path=META_DB):
     c=sqlite3.connect(path,timeout=20,check_same_thread=False)
@@ -98,15 +99,15 @@ def create_user(username,password,role):
         return c.execute("INSERT INTO users(username,password_hash,role,created_at) VALUES(?,?,?,?)",(username.strip(),hash_password(password),role,now_iso())).lastrowid
 
 def list_users():
-    with db() as c: return c.execute("SELECT id,username,role,created_at FROM users ORDER BY id").fetchall()
+    with db() as c:
+        return c.execute("SELECT id,username,role,created_at FROM users ORDER BY id").fetchall()
 
 def slugify(v):
     s=re.sub(r"[^a-z0-9-]+","-",v.lower().strip())
     return re.sub(r"-+","-",s).strip("-")[:40] or "project-"+secrets.token_hex(3)
 
-def allocate_port():
-    with db() as c:
-        used={r[0] for r in c.execute("SELECT port FROM projects").fetchall()}
+def allocate_port(c):
+    used={r[0] for r in c.execute("SELECT port FROM projects").fetchall()}
     for port in range(20000,21000):
         if port not in used: return port
     raise RuntimeError("Ayrılacak proje portu kalmadı.")
@@ -123,9 +124,10 @@ def create_project(owner_id,name):
         db_path=root/"data.sqlite3"
         project_dir=root/"app"
         project_dir.mkdir(parents=True,exist_ok=True)
+        port=allocate_port(c)
         pid=c.execute(
           "INSERT INTO projects(owner_id,name,slug,db_path,project_dir,port,created_at) VALUES(?,?,?,?,?,?,?)",
-          (owner_id,name.strip(),slug,str(db_path),str(project_dir),allocate_port(),now_iso())
+          (owner_id,name.strip(),slug,str(db_path),str(project_dir),port,now_iso())
         ).lastrowid
     with sqlite3.connect(db_path) as pc:
         pc.execute("CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY,value TEXT NOT NULL,updated_at TEXT NOT NULL)")
@@ -160,14 +162,11 @@ def delete_media(mid):
 
 def project_kv_path(project,key):
     if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,120}",key): raise ValueError("Geçersiz key.")
-    path=Path(project["db_path"])
-    with sqlite3.connect(path) as c:
-        row=c.execute("SELECT key,value,updated_at FROM kv WHERE key=?",(key,)).fetchone()
-    return row
+    with sqlite3.connect(Path(project["db_path"])) as c:
+        return c.execute("SELECT key,value,updated_at FROM kv WHERE key=?",(key,)).fetchone()
 
 def set_project_kv(project,key,value):
     if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,120}",key): raise ValueError("Geçersiz key.")
-    path=Path(project["db_path"])
-    with sqlite3.connect(path) as c:
+    with sqlite3.connect(Path(project["db_path"])) as c:
         c.execute("INSERT INTO kv(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",(key,value,now_iso()))
         c.commit()
