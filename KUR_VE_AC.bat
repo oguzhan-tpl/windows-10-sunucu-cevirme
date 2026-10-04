@@ -115,7 +115,7 @@ start "ASTRA SERVER" /min "%ComSpec%" /c call "%CD%\scripts\start_core.bat"
 
 set "READY=0"
 for /l %%T in (1,1,20) do (
-  powershell -NoProfile -Command "try { $r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/healthz -TimeoutSec 2; if($r.StatusCode -eq 200){exit 0}else{exit 1} } catch { exit 1 }" >nul 2>nul
+  powershell -NoProfile -Command "try { $r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:!ASTRA_PORT!/healthz -TimeoutSec 2; if($r.StatusCode -eq 200){exit 0}else{exit 1} } catch { exit 1 }" >nul 2>nul
   if not errorlevel 1 (
     set "READY=1"
     goto core_ready
@@ -184,7 +184,7 @@ echo ERROR: Astra startup lifecycle test failed.
 goto failure
 
 :error_core
-echo ERROR: Astra did not become ready on 127.0.0.1:8080.
+echo ERROR: Astra did not become ready on 127.0.0.1:!ASTRA_PORT!.
 goto show_log
 
 :error_port
