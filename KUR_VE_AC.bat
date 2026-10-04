@@ -43,9 +43,27 @@ if errorlevel 1 goto fail
 
 echo.
 echo [3/6] Preparing administrator account...
+
+if not exist "data" mkdir "data"
+
+set "PASS="
+if exist ".env" (
+  for /f "tokens=1,* delims==" %%A in ('findstr /b /c:"BOOTSTRAP_ADMIN_PASSWORD=" ".env" 2^>nul') do set "PASS=%%B"
+)
+
+if not defined PASS (
+  echo Generating a new administrator password...
+  for /f "delims=" %%P in ('py -3 -c "import secrets; print('Astra-'+secrets.token_urlsafe(12))"') do set "PASS=%%P"
+)
+
+if not defined PASS (
+  echo ERROR: Could not create administrator password.
+  goto fail
+)
+
 if not exist ".env" (
   for /f "delims=" %%S in ('py -3 -c "import secrets; print(secrets.token_urlsafe(48))"') do set "SECRET=%%S"
-  for /f "delims=" %%P in ('py -3 -c "import secrets; print('Astra-'+secrets.token_urlsafe(12))"') do set "PASS=%%P"
+  if not defined SECRET goto fail
 
   (
     echo APP_NAME=Astra Server
@@ -65,24 +83,21 @@ if not exist ".env" (
     echo APP_MAX_COUNT=5
     echo APP_PROXY_BODY_MAX_MB=16
   ) > ".env"
-
-  if not exist "data" mkdir "data"
-  (
-    echo Astra Server administrator credentials
-    echo Username=admin
-    echo Password=!PASS!
-  ) > "data\admin-credentials.txt"
 ) else (
-  set "PASS="
-  if exist "data\admin-credentials.txt" (
-    for /f "tokens=1,* delims==" %%A in ('findstr /b /c:"Password=" "data\admin-credentials.txt"') do set "PASS=%%B"
-  )
-  if not defined PASS (
-    for /f "tokens=1,* delims==" %%A in ('findstr /b /c:"BOOTSTRAP_ADMIN_PASSWORD=" ".env"') do set "PASS=%%B"
-  )
+  set "ASTRA_PASS=!PASS!"
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "$f='.env';$lines=@(Get-Content -LiteralPath $f -ErrorAction Stop);$found=$false;$out=foreach($line in $lines){if($line -match '^BOOTSTRAP_ADMIN_PASSWORD='){ $found=$true; 'BOOTSTRAP_ADMIN_PASSWORD='+$env:ASTRA_PASS } else { $line }};if(-not $found){$out += 'BOOTSTRAP_ADMIN_PASSWORD='+$env:ASTRA_PASS};Set-Content -LiteralPath $f -Value $out -Encoding utf8"
+  if errorlevel 1 goto fail
 )
 
-if not defined PASS set "PASS=(existing admin account - password unchanged)"
+set "ASTRA_ADMIN_PASSWORD=!PASS!"
+".venv\Scripts\python.exe" -c "import os; from app.db import init_db,set_user_password; init_db(); set_user_password('admin', os.environ['ASTRA_ADMIN_PASSWORD'])"
+if errorlevel 1 goto fail
+
+(
+  echo Astra Server administrator credentials
+  echo Username=admin
+  echo Password=!PASS!
+) > "data\admin-credentials.txt"
 
 echo.
 echo ---------------------------------------------------------
@@ -102,7 +117,7 @@ echo [5/6] Starting Astra core...
 start "ASTRA SERVER" /min cmd /c ""%CD%\.venv\Scripts\python.exe" -m app.main"
 
 set "READY=0"
-for /l %%T in (1,1,15) do (
+for /l %%T in (1,1,20) do (
   powershell -NoProfile -Command "try { $r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/healthz -TimeoutSec 2; if($r.StatusCode -eq 200){exit 0}else{exit 1} } catch { exit 1 }" >nul 2>nul
   if not errorlevel 1 (
     set "READY=1"
@@ -115,6 +130,8 @@ for /l %%T in (1,1,15) do (
 if "!READY!"=="0" (
   echo ERROR: Astra did not become ready on 127.0.0.1:8080.
   echo Open the ASTRA SERVER window and check the error.
+  echo.
+  if exist "data\startup.log" type "data\startup.log"
   goto fail
 )
 
@@ -136,7 +153,6 @@ echo LOCAL      : http://127.0.0.1:8080
 echo PUBLIC URL : See the ASTRA PUBLIC window.
 echo.
 echo Keep ASTRA SERVER and ASTRA PUBLIC windows running.
-echo Close them to stop the service and public access.
 echo =========================================================
 echo.
 pause
