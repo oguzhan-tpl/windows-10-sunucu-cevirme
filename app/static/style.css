@@ -107,6 +107,8 @@ input:focus,select:focus{border-color:#6886d5;box-shadow:0 0 0 2px rgba(36,87,21
 }
 .content-head h1{margin:6px 0 0;font-size:30px;line-height:1.05;font-weight:650;letter-spacing:-.03em}
 .profile-box{display:flex;align-items:center;gap:10px}
+.profile-trigger{border:0;background:transparent;color:inherit;padding:4px;border-radius:4px;cursor:pointer}
+.profile-trigger:hover{background:#f6f7f8}
 .profile-copy{text-align:right}
 .profile-copy strong{display:block;font-size:12px}
 .profile-copy span{display:block;font-size:10px;color:#7b848d;margin-top:3px;text-transform:uppercase;letter-spacing:.08em}
@@ -173,6 +175,12 @@ input:focus,select:focus{border-color:#6886d5;box-shadow:0 0 0 2px rgba(36,87,21
 .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .data-list{display:grid}
 .data-row{grid-template-columns:minmax(0,1fr) 130px 80px;align-items:center}
+.admin-user-row{grid-template-columns:minmax(0,1fr) 145px minmax(150px,auto)}
+.admin-resource-row{grid-template-columns:minmax(0,1fr) 90px minmax(180px,auto)}
+.admin-role-select{min-height:34px;padding:7px 9px;font-size:11px}
+.inline-actions{margin-top:0;justify-content:flex-end}
+.danger-button{color:var(--danger);border-color:#e4c8cc}
+.admin-disk{margin:10px 0 0;padding:9px 0;color:#7a838c;font:10px Consolas,Monaco,monospace;border-bottom:1px solid #eceef0}
 .data-cell strong{font-size:12px}
 .data-cell span{display:block;font-size:10px;color:#858d95;margin-top:3px}
 .role-cell{text-transform:uppercase;font-size:9px;font-weight:800;color:#5e6871}
@@ -232,7 +240,38 @@ input:focus,select:focus{border-color:#6886d5;box-shadow:0 0 0 2px rgba(36,87,21
 .usage-head strong{font-size:12px}
 .usage-head span{display:block;color:#858d95;font-size:10px;margin-top:4px}
 .usage-bar{height:5px;background:#edf0f2;margin:10px 0 2px;overflow:hidden}
-.usage-bar span{display:block;height:100%;background:#315fc4}
+.usage-bar span{display:block;height:100%;background:var(--blue)}
+.usage-subline{font-size:10px;color:#7f8890;margin:5px 0 2px}
 .empty.compact{padding:12px 0}
 @media(max-width:900px){.admin-summary{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:480px){.admin-summary{grid-template-columns:1fr}}
+
+.drawer-overlay{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:flex-end}
+.drawer-backdrop{position:absolute;inset:0;background:rgba(20,25,30,.18)}
+.account-drawer{position:relative;width:min(430px,100%);background:#fff;border:1px solid var(--line-dark);border-bottom:0;padding:20px;box-shadow:0 -16px 45px rgba(25,31,37,.12);animation:drawer-in .16s ease-out}
+@keyframes drawer-in{from{transform:translateY(12px);opacity:.6}to{transform:none;opacity:1}}
+.drawer-head{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.drawer-head h2{font-size:17px;margin:5px 0 0;font-weight:650}
+.icon-button{width:32px;height:32px;background:#fff;border:1px solid var(--line-dark);font-size:20px;line-height:1;color:#4b555e;cursor:pointer}
+.drawer-profile{display:flex;align-items:center;gap:12px;padding:18px 0;border-bottom:1px solid #eceef0}
+.drawer-avatar{width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--line-dark);font-size:12px;font-weight:800}
+.drawer-profile strong{display:block;font-size:13px}
+.drawer-profile span{display:block;margin-top:4px;color:#7e8790;font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.drawer-facts{display:grid;gap:0}
+.drawer-facts div{padding:13px 0;border-bottom:1px solid #eceef0}
+.drawer-facts span{display:block;font-size:10px;color:#828b94;margin-bottom:5px}
+.drawer-facts strong{display:block;font:11px Consolas,Monaco,monospace;word-break:break-word;color:#26313a}
+.logout-wide{width:100%;margin-top:16px;background:#fff;color:#4d565f;border-color:var(--line-dark)}
+@media(max-width:700px){
+  .profile-trigger{padding:2px}
+  .admin-user-row,.admin-resource-row{grid-template-columns:minmax(0,1fr) auto}
+  .admin-user-row .admin-role-select{grid-column:1/-1;width:100%}
+  .admin-user-row .inline-actions,.admin-resource-row .inline-actions{grid-column:1/-1;justify-content:flex-start}
+  .db-mini-row{grid-template-columns:minmax(0,1fr) auto}
+  .db-mini-row .role-cell:last-child{grid-column:1/-1}
+  .account-drawer{width:100%;padding:16px 14px}
+}
+@media(max-width:480px){
+  .usage-head{align-items:flex-start}
+  .usage-head>strong{white-space:nowrap}
+}
