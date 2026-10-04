@@ -96,7 +96,15 @@ echo [5/6] Testing Astra startup...
 if errorlevel 1 goto error_startup
 
 echo.
-echo Starting Astra core...
+echo [6/7] Checking port 8080...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$root=(Resolve-Path '.').Path; $conns=Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue; foreach($c in $conns){$p=Get-CimInstance Win32_Process -Filter ('ProcessId='+$c.OwningProcess) -ErrorAction SilentlyContinue; if($p -and ($p.CommandLine -like ('*'+$root+'*app.main*') -or $p.CommandLine -like '*-m app.main*')){Write-Host ('Stopping old Astra process PID '+$c.OwningProcess); Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue}}"
+timeout /t 1 /nobreak >nul
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$c=Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue; if($c){$c | ForEach-Object {$p=Get-CimInstance Win32_Process -Filter ('ProcessId='+$_.OwningProcess) -ErrorAction SilentlyContinue; Write-Host ('Port 8080 is already in use. PID='+$_.OwningProcess); if($p){Write-Host ('Process='+$p.Name); Write-Host ('Command='+$p.CommandLine)}}; exit 1}"
+if errorlevel 1 goto error_port
+
+echo.
+echo [7/7] Starting Astra core...
 if exist "data\startup.log" del /q "data\startup.log" >nul 2>nul
 start "ASTRA SERVER" /min "%ComSpec%" /c call "%CD%\scripts\start_core.bat"
 
@@ -173,6 +181,12 @@ goto failure
 :error_core
 echo ERROR: Astra did not become ready on 127.0.0.1:8080.
 goto show_log
+
+:error_port
+echo ERROR: Port 8080 is occupied by another program.
+echo Close that program and run KUR_VE_AC.bat again.
+goto show_log
+
 
 :show_log
 echo.
