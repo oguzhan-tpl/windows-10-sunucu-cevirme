@@ -1,33 +1,205 @@
 <!doctype html>
 <html lang="tr">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#eef2f6"><title>Astra Server</title><link rel="stylesheet" href="/static/style.css"></head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f5f7">
+  <title>Astra Server</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
 <body>
-<main class="wrap">
-<section id="auth" class="auth-grid">
-<div class="auth-brand"><div class="mark">AS</div><div class="kicker">ASTRA SERVER</div><h1>Kişisel sunucu kontrol merkezi</h1><p>Windows 10 üzerinde sade, hızlı ve tek merkezden yönetilen servis platformu.</p></div>
-<div class="cols">
-<form id="login" class="card stack"><div class="section-title"><h2>Giriş yap</h2><span class="pill">secure</span></div><div class="field"><label>Kullanıcı adı</label><input id="lu" autocomplete="username" required></div><div class="field"><label>Şifre</label><input id="lp" type="password" autocomplete="current-password" required></div><button class="btn primary">Giriş yap</button></form>
-<form id="register" class="card stack"><div class="section-title"><h2>Yeni hesap</h2><span class="pill">user</span></div><div class="field"><label>Kullanıcı adı</label><input id="ru" required></div><div class="field"><label>Şifre</label><input id="rp" type="password" autocomplete="new-password" required></div><button class="btn">Kayıt ol</button></form>
-</div>
-<div class="footer-note">Astra · localhost çekirdeği · tunnel ile dış erişim</div>
-</section>
+  <div id="loading" class="loading-screen">
+    <div class="loading-mark">AS</div>
+    <div class="loading-line"></div>
+    <div class="loading-text">Sistem hazırlanıyor</div>
+  </div>
 
-<section id="dashboard" class="hidden panel">
-<header class="topbar"><div class="brand"><div class="mark">AS</div><div><div class="kicker">ASTRA SERVER</div><h1>Kontrol merkezi</h1></div></div><div class="account"><span id="who" class="account-name">Misafir</span><span id="role" class="pill">-</span><button id="out" class="btn small soft">Çıkış</button></div></header>
+  <main id="app" class="app hidden">
+    <section id="auth" class="auth">
+      <div class="auth-shell">
+        <div class="auth-side">
+          <div class="brand-mark">AS</div>
+          <div class="eyebrow">ASTRA SERVER</div>
+          <h1>Kişisel sunucunuz.<br>Tek merkezden.</h1>
+          <p>Medya, kullanıcılar ve geliştirici uygulamaları için yerel çekirdeği dış erişimle birleştiren sade bir yönetim sistemi.</p>
+          <div class="auth-meta">
+            <span>WINDOWS HOST</span>
+            <span>PRIVATE CORE</span>
+            <span>REMOTE ACCESS</span>
+          </div>
+        </div>
 
-<div class="stats"><article class="card stat"><small>Medya</small><strong id="mc">0</strong></article><article class="card stat"><small>Rol</small><strong id="role-stat">-</strong></article><article class="card stat"><small>Çekirdek</small><strong>ONLINE</strong></article></div>
+        <div class="auth-form">
+          <div class="form-heading">
+            <span class="eyebrow">HESAP ERİŞİMİ</span>
+            <h2>Giriş yap</h2>
+            <p>Sunucu panelinize devam edin.</p>
+          </div>
+          <form id="login" class="form-stack">
+            <label>Kullanıcı adı<input id="lu" autocomplete="username" required></label>
+            <label>Şifre<input id="lp" type="password" autocomplete="current-password" required></label>
+            <button class="button primary" type="submit">Panele giriş yap</button>
+          </form>
 
-<div class="cols">
-<section class="card"><div class="section-head"><div class="section-title"><h2>Medya arşivi</h2><span class="muted">Yönetici yayınları</span></div><button id="refresh" class="btn small soft">Yenile</button></div><div id="media" class="list"></div></section>
-<section id="dev" class="card hidden"><div class="section-head"><div class="section-title"><h2>Developer alanı</h2><span class="muted">kişisel projeler</span></div></div><div class="notice">Her proje ayrı klasör, SQLite dosyası ve localhost portuyla çalışır.</div><form id="project" class="stack" style="margin-top:12px"><input id="pn" placeholder="Proje adı" required><button class="btn primary">Proje oluştur</button></form><div id="projects" class="project-grid" style="margin-top:12px"></div></section>
-</div>
+          <div class="auth-register">
+            <div><strong>Yeni kullanıcı</strong><span>Standart hesap oluştur</span></div>
+            <button id="show-register" class="text-button" type="button">Kayıt ol</button>
+          </div>
 
-<section id="admin" class="card hidden"><div class="section-head"><div class="section-title"><h2>Yönetici</h2><span class="muted">medya ve hesap yönetimi</span></div></div><div class="cols">
-<form id="upload" class="stack"><div class="field"><label>Medya başlığı</label><input id="mt" required></div><div class="field"><label>Dosya</label><input id="mf" type="file" required></div><button class="btn primary">Medya yükle</button></form>
-<div class="admin-grid"><form id="new-user" class="stack"><div class="field"><label>Kullanıcı adı</label><input id="nu" required></div><div class="field"><label>Şifre</label><input id="np" type="password" required></div><div class="field"><label>Rol</label><select id="nr"><option value="user">user</option><option value="developer">developer</option><option value="admin">admin</option></select></div><button class="btn">Hesap aç</button></form><div id="admin-users" class="list"></div></div>
-</div><div class="hr"></div><div id="admin-media" class="list"></div></section>
-</section>
-</main>
-<script src="/static/app.js"></script>
+          <form id="register" class="form-stack hidden">
+            <label>Kullanıcı adı<input id="ru" autocomplete="username" required></label>
+            <label>Şifre<input id="rp" type="password" autocomplete="new-password" required></label>
+            <div class="form-actions">
+              <button class="button primary" type="submit">Hesap oluştur</button>
+              <button id="hide-register" class="button light" type="button">Vazgeç</button>
+            </div>
+          </form>
+
+          <div class="auth-foot">ASTRA SERVER · Yerel çekirdek / Cloudflare Tunnel</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="dashboard" class="dashboard hidden">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark small">AS</div>
+          <div><strong>ASTRA SERVER</strong><span>Control Center</span></div>
+        </div>
+
+        <nav class="nav">
+          <div class="nav-label">YÖNETİM</div>
+          <a href="#overview" class="nav-link active" data-section="overview">
+            <span class="icon">⌂</span><span>Genel bakış</span>
+          </a>
+          <a href="#media-section" class="nav-link" data-section="media-section">
+            <span class="icon">▣</span><span>Medya arşivi</span>
+          </a>
+          <a href="#developer-section" id="nav-developer" class="nav-link hidden" data-section="developer-section">
+            <span class="icon">⌘</span><span>Geliştirici</span>
+          </a>
+          <a href="#admin-section" id="nav-admin" class="nav-link hidden" data-section="admin-section">
+            <span class="icon">□</span><span>Yönetim</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="server-state"><span class="state-dot"></span><div><strong>Çekirdek aktif</strong><span>Yerel servis çalışıyor</span></div></div>
+          <button id="out" class="button logout" type="button">Oturumu kapat</button>
+        </div>
+      </aside>
+
+      <div class="content">
+        <header class="content-head">
+          <div>
+            <div class="eyebrow" id="section-kicker">GENEL BAKIŞ</div>
+            <h1 id="section-title">Kontrol merkezi</h1>
+          </div>
+          <div class="profile-box">
+            <div class="profile-copy"><strong id="who">Misafir</strong><span id="role">-</span></div>
+            <div class="profile-avatar" id="avatar">A</div>
+          </div>
+        </header>
+
+        <section id="overview" class="page-section active-section">
+          <div class="summary-grid">
+            <article class="metric">
+              <div><span>Medya</span><small>Yayınlanan içerik</small></div>
+              <strong id="mc">0</strong>
+            </article>
+            <article class="metric">
+              <div><span>Hesap</span><small>Aktif kullanıcı rolü</small></div>
+              <strong id="role-stat">-</strong>
+            </article>
+            <article class="metric public-metric">
+              <div><span>Dış erişim</span><small>Cloudflare bağlantısı</small></div>
+              <strong id="public-state">BEKLENİYOR</strong>
+            </article>
+          </div>
+
+          <div class="overview-grid">
+            <section class="panel-card">
+              <div class="panel-head"><div><div class="eyebrow">SUNUCU</div><h2>Bağlantı durumu</h2></div></div>
+              <div class="status-row"><span class="state-dot"></span><div><strong>Astra çekirdeği çevrimiçi</strong><small>Panel ve API localhost üzerinde çalışıyor.</small></div></div>
+              <div class="public-url-box">
+                <div><span>Public adres</span><strong id="public-url">Tunnel adresi hazırlanıyor…</strong></div>
+                <button id="copy-public" class="button light small" type="button">Kopyala</button>
+              </div>
+            </section>
+
+            <section class="panel-card">
+              <div class="panel-head"><div><div class="eyebrow">HIZLI BİLGİ</div><h2>Sunucu mimarisi</h2></div></div>
+              <dl class="facts">
+                <div><dt>Çekirdek</dt><dd>127.0.0.1:8080</dd></div>
+                <div><dt>Yayın</dt><dd>Cloudflare Tunnel</dd></div>
+                <div><dt>Veri</dt><dd>SQLite</dd></div>
+                <div><dt>Uygulama alanı</dt><dd>20xxx localhost</dd></div>
+              </dl>
+            </section>
+          </div>
+        </section>
+
+        <section id="media-section" class="page-section">
+          <section class="panel-card">
+            <div class="panel-head">
+              <div><div class="eyebrow">İÇERİK</div><h2>Medya arşivi</h2><p>Yönetici tarafından yayınlanan videolar.</p></div>
+              <button id="refresh" class="button light small" type="button">Yenile</button>
+            </div>
+            <div id="media" class="media-list"></div>
+          </section>
+        </section>
+
+        <section id="developer-section" class="page-section hidden">
+          <section class="panel-card">
+            <div class="panel-head">
+              <div><div class="eyebrow">DEVELOPMENT</div><h2>Geliştirici alanı</h2><p>Her uygulama kendi klasörü, veritabanı ve localhost portuyla çalışır.</p></div>
+            </div>
+            <form id="project" class="create-row">
+              <input id="pn" placeholder="Yeni proje adı" required>
+              <button class="button primary" type="submit">Proje oluştur</button>
+            </form>
+            <div id="projects" class="project-list"></div>
+          </section>
+        </section>
+
+        <section id="admin-section" class="page-section hidden">
+          <div class="admin-grid">
+            <section class="panel-card">
+              <div class="panel-head"><div><div class="eyebrow">YAYIN</div><h2>Medya yükle</h2><p>Sunucudaki kullanıcıların izleyeceği içerikleri yönetin.</p></div></div>
+              <form id="upload" class="form-stack">
+                <label>Medya başlığı<input id="mt" required></label>
+                <label>Dosya<input id="mf" type="file" accept="video/*" required></label>
+                <button class="button primary" type="submit">Medya yayınla</button>
+              </form>
+            </section>
+
+            <section class="panel-card">
+              <div class="panel-head"><div><div class="eyebrow">HESAPLAR</div><h2>Kullanıcı oluştur</h2><p>Yeni kullanıcı veya geliştirici hesabı açın.</p></div></div>
+              <form id="new-user" class="form-stack">
+                <label>Kullanıcı adı<input id="nu" required></label>
+                <label>Şifre<input id="np" type="password" required></label>
+                <label>Rol<select id="nr"><option value="user">Kullanıcı</option><option value="developer">Geliştirici</option><option value="admin">Yönetici</option></select></label>
+                <button class="button primary" type="submit">Hesap aç</button>
+              </form>
+            </section>
+          </div>
+
+          <section class="panel-card admin-table-card">
+            <div class="panel-head"><div><div class="eyebrow">HESAP LİSTESİ</div><h2>Kullanıcılar</h2></div></div>
+            <div id="admin-users" class="data-list"></div>
+          </section>
+
+          <section class="panel-card admin-table-card">
+            <div class="panel-head"><div><div class="eyebrow">MEDYA</div><h2>Yayın yönetimi</h2></div></div>
+            <div id="admin-media" class="data-list"></div>
+          </section>
+        </section>
+
+        <footer class="content-foot">ASTRA SERVER <span>·</span> Local core <span>·</span> Remote access without router port forwarding</footer>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div>
+  <script src="/static/app.js"></script>
 </body>
 </html>
