@@ -19,7 +19,7 @@ from .db import (
     create_media, create_project, create_user, db, delete_media, get_media,
     get_project, get_project_by_slug, get_user_by_username, init_db,
     list_media, list_projects, list_users, project_kv_path, set_project_kv,
-    verify_password, ensure_bootstrap,
+    verify_password, ensure_bootstrap, admin_usage,
 )
 from .security import BROWSER_MAX_AGE, COOKIE_NAME, create_session, require_role, require_user, revoke_session
 from .runner import deploy_async, stop as stop_project
@@ -177,6 +177,30 @@ async def remove_media(media_id: int, request: Request):
     return {"ok": True}
 
 
+@app.get("/api/admin/overview")
+async def admin_overview(request: Request):
+    require_role(request, "admin")
+    users = admin_usage()
+    total_databases = sum(u["database_count"] for u in users)
+    total_db_bytes = sum(u["database_bytes"] for u in users)
+    top = max(users, key=lambda u: u["database_bytes"], default=None)
+    quota_bytes = 2 * 1024 * 1024 * 1024
+    for u in users:
+        u["storage_percent"] = round(min(100.0, (u["database_bytes"] / quota_bytes) * 100), 2)
+    return {
+        "users": users,
+        "totals": {
+            "users": len(users),
+            "developers": sum(u["role"] == "developer" for u in users),
+            "databases": total_databases,
+            "database_bytes": total_db_bytes,
+            "database_mb": round(total_db_bytes / 1048576, 2),
+            "top_user": top["username"] if top else None,
+        },
+        "database_quota_mb": 2048,
+    }
+
+
 @app.get("/api/admin/users")
 async def admin_users(request: Request):
     require_role(request, "admin")
@@ -208,8 +232,8 @@ def owned(request: Request, slug: str):
 async def server_status(request: Request):
     require_user(request)
     url_file = settings.data_dir / "public-url.txt"
-    public_url = ""
-    if url_file.exists():
+    public_url = settings.public_hostname or ""
+    if url_file.exists() and not public_url:
         try:
             public_url = url_file.read_text("utf-8").strip()
         except OSError:
