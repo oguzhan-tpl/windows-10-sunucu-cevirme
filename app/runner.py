@@ -102,10 +102,13 @@ def ensure_venv(app_dir):
 
 def install_requirements(app_dir,python):
     req=app_dir/"requirements.txt"
-    if not req.exists():
-        return
+    if req.exists():
+        subprocess.run(
+            [str(python),"-m","pip","install","--disable-pip-version-check","--no-input","-r",str(req)],
+            cwd=app_dir,check=True,timeout=900
+        )
     subprocess.run(
-        [str(python),"-m","pip","install","--disable-pip-version-check","--no-input","-r",str(req)],
+        [str(python),"-m","pip","install","--disable-pip-version-check","--no-input","uvicorn>=0.37,<1"],
         cwd=app_dir,check=True,timeout=900
     )
 
