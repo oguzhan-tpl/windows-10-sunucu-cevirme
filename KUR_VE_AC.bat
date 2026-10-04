@@ -28,7 +28,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [1/6] Python environment...
+echo [1/7] Python environment...
 if not exist ".venv\Scripts\python.exe" (
   py -3 -m venv ".venv"
   if errorlevel 1 goto fail
@@ -37,12 +37,12 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 echo.
-echo [2/6] Installing packages...
+echo [2/7] Installing packages...
 ".venv\Scripts\python.exe" -m pip install --disable-pip-version-check -r "%CD%\requirements.txt"
 if errorlevel 1 goto fail
 
 echo.
-echo [3/6] Preparing administrator account...
+echo [3/7] Preparing administrator account...
 
 if not exist "data" mkdir "data"
 
@@ -108,7 +108,7 @@ echo Credentials file: %CD%\data\admin-credentials.txt
 echo ---------------------------------------------------------
 echo.
 
-echo [4/6] Installing Cloudflare Tunnel...
+echo [4/7] Installing Cloudflare Tunnel...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\install_cloudflared.ps1"
 if errorlevel 1 goto fail
 
@@ -139,10 +139,7 @@ for /l %%T in (1,1,20) do (
 :server_ready
 if "!READY!"=="0" (
   echo ERROR: Astra did not become ready on 127.0.0.1:8080.
-  echo Open the ASTRA SERVER window and check the error.
-  echo.
-  if exist "data\startup.log" type "data\startup.log"
-  goto fail
+  goto diagnostics
 )
 
 echo Astra core is ONLINE.
@@ -152,6 +149,28 @@ echo [7/7] Starting public access...
 start "ASTRA PUBLIC" cmd /c ""%CD%\PUBLIC_AC.bat""
 timeout /t 2 /nobreak >nul
 start "" "http://127.0.0.1:8080"
+
+:diagnostics
+echo.
+echo =========================================================
+echo ASTRA STARTUP DIAGNOSTICS
+echo =========================================================
+if exist "data\startup.log" (
+  echo.
+  type "data\startup.log"
+) else (
+  echo No startup.log was created.
+)
+echo.
+goto fail
+
+:fail
+echo.
+echo =========================================================
+echo INSTALLATION FAILED
+echo =========================================================
+pause
+exit /b 1
 
 echo.
 echo =========================================================
