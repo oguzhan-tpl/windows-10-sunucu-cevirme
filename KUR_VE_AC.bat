@@ -27,19 +27,19 @@ if errorlevel 1 (
 )
 
 if not exist ".venv\Scripts\python.exe" (
-  echo [1/4] Python ortami hazirlaniyor...
+  echo [1/5] Python ortami hazirlaniyor...
   py -3 -m venv .venv
   if errorlevel 1 goto fail
 ) else (
-  echo [1/4] Mevcut Python ortami kullaniliyor.
+  echo [1/5] Mevcut Python ortami kullaniliyor.
 )
 
-echo [2/4] Paketler hazirlaniyor...
+echo [2/5] Paketler hazirlaniyor...
 ".venv\Scripts\python.exe" -m pip install -r "%CD%\requirements.txt"
 if errorlevel 1 goto fail
 
 if not exist ".env" (
-  echo [3/4] Ilk ayarlar hazirlaniyor...
+  echo [3/5] Ilk ayarlar hazirlaniyor...
   for /f "delims=" %%S in ('".venv\Scripts\python.exe" -c "import secrets; print(secrets.token_urlsafe(48))"') do set "SECRET=%%S"
   for /f "delims=" %%P in ('".venv\Scripts\python.exe" -c "import secrets; print(secrets.token_urlsafe(10))"') do set "PASS=astra-%%P"
   (
@@ -67,15 +67,23 @@ if not exist ".env" (
     echo Sifre: !PASS!
   ) > data\admin-credentials.txt
 ) else (
-  echo [3/4] Mevcut ayarlar korunuyor.
+  echo [3/5] Mevcut ayarlar korunuyor.
 )
 
-echo [4/4] Astra aciliyor...
+echo [4/5] Cloudflare Tunnel hazirlaniyor...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\install_cloudflared.ps1"
+if errorlevel 1 goto fail
+
+echo [5/5] Astra ve public tunnel aciliyor...
 start "ASTRA SERVER" /min cmd /c ""%CD%\.venv\Scripts\python.exe" -m app.main"
+timeout /t 3 /nobreak >nul
+start "ASTRA PUBLIC" cmd /c ""%CD%\PUBLIC_AC.bat""
 timeout /t 2 /nobreak >nul
 start "" "http://127.0.0.1:8080"
+
 echo.
 echo Astra acildi.
+echo Public adres, ASTRA PUBLIC penceresinde gorunecek.
 echo Admin bilgileri: data\admin-credentials.txt
 echo.
 pause
