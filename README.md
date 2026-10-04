@@ -66,7 +66,7 @@ dosyasına da kaydedilir.
 
 ## Dışarıdan erişim
 
-ASTRA dış dünyaya doğrudan Windows portu açmaz. Cloudflare Tunnel, public hostname'i yerel servis ve porta bağlar. Cloudflare'ın güncel dokümantasyonuna göre yayınlanan uygulama için Cloudflare üzerinde bir domain ve Published Application route gerekir. citeturn360909search2turn360909search4
+ASTRA dış dünyaya doğrudan Windows portu açmaz. Cloudflare Tunnel, public hostname'i yerel servis ve porta bağlar. Cloudflare'ın güncel dokümantasyonuna göre yayınlanan uygulama için Cloudflare üzerinde bir domain ve Published Application route gerekir.
 
 Kalıcı kullanım için:
 
@@ -86,7 +86,7 @@ CLOUDFLARE_TUNNEL_NAME=sunucumon
 CLOUDFLARE_TUNNEL_TOKEN=<sadece-lokal-.env>
 ~~~
 
-**Önemli:** `sunucumon` tek başına internet üzerinde sihirli bir domain değildir. Stabil URL için sizin kontrol ettiğiniz bir domain/hostname gerekir. Quick Tunnel (`trycloudflare.com`) geçicidir ve yeniden başlatmada değişebilir. citeturn360909search2turn360909search9
+**Önemli:** `sunucumon` tek başına internet üzerinde sihirli bir domain değildir. Stabil URL için sizin kontrol ettiğiniz bir domain/hostname gerekir. Quick Tunnel (`trycloudflare.com`) geçicidir ve yeniden başlatmada değişebilir.
 
 Panel, stable hostname'i kullanıcıya gösterir ve tek tıkla kopyalanabilir. Windows makine ve Tunnel tekrar çevrimiçi olduğu sürece aynı adres kullanılabilir.
 
