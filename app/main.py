@@ -3,6 +3,7 @@ from __future__ import annotations
 import mimetypes
 import secrets
 import socket
+import shutil
 import tempfile
 import zipfile
 from contextlib import asynccontextmanager
@@ -10,7 +11,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -18,8 +19,9 @@ from .config import settings
 from .db import (
     create_media, create_project, create_user, db, delete_media, get_media,
     get_project, get_project_by_slug, get_user_by_username, init_db,
-    list_media, list_projects, list_users, project_kv_path, set_project_kv,
-    verify_password, ensure_bootstrap, admin_usage,
+    list_media, list_projects, list_users, list_all_projects, project_kv_path, set_project_kv,
+    verify_password, ensure_bootstrap, admin_usage, update_user, delete_project, delete_user,
+    hash_password,
 )
 from .security import BROWSER_MAX_AGE, COOKIE_NAME, create_session, require_role, require_user, revoke_session
 from .runner import deploy_async, stop as stop_project
@@ -45,6 +47,11 @@ class NewProject(BaseModel):
     name: str
 
 
+class UserUpdate(BaseModel):
+    role: str | None = None
+    password: str | None = None
+
+
 class KV(BaseModel):
     value: str
 
@@ -53,6 +60,12 @@ class KV(BaseModel):
 async def lifespan(_app):
     init_db()
     ensure_bootstrap(settings.bootstrap_admin_username, settings.bootstrap_admin_password, "admin")
+    # Clear stale process state after a normal Windows restart.
+    from .runner import pid_running
+    from .db import update_project
+    for project in list_all_projects():
+        if project["pid"] and not pid_running(project["pid"]):
+            update_project(project["id"], status="stopped", pid=None)
     yield
 
 
@@ -180,25 +193,131 @@ async def remove_media(media_id: int, request: Request):
 @app.get("/api/admin/overview")
 async def admin_overview(request: Request):
     require_role(request, "admin")
-    users = admin_usage()
-    total_databases = sum(u["database_count"] for u in users)
-    total_db_bytes = sum(u["database_bytes"] for u in users)
-    top = max(users, key=lambda u: u["database_bytes"], default=None)
-    quota_bytes = 2 * 1024 * 1024 * 1024
+    users=admin_usage()
+    total_databases=sum(u["database_count"] for u in users)
+    total_db_bytes=sum(u["database_bytes"] for u in users)
+    total_project_bytes=sum(u["project_storage_bytes"] for u in users)
+    total_media_bytes=sum(int(m["size"]) for m in list_media())
+    top=max(users,key=lambda u:u["project_storage_bytes"],default=None)
+    top_db=max(users,key=lambda u:u["database_bytes"],default=None)
+    quota_bytes=settings.user_storage_quota_mb*1024*1024
     for u in users:
-        u["storage_percent"] = round(min(100.0, (u["database_bytes"] / quota_bytes) * 100), 2)
+        u["storage_percent"]=round(min(100.0,(u["project_storage_bytes"]/quota_bytes)*100),2)
+        u["database_share_percent"]=round((u["database_bytes"]/total_db_bytes)*100,2) if total_db_bytes else 0
+    disk=shutil.disk_usage(settings.data_dir)
     return {
-        "users": users,
-        "totals": {
-            "users": len(users),
-            "developers": sum(u["role"] == "developer" for u in users),
-            "databases": total_databases,
-            "database_bytes": total_db_bytes,
-            "database_mb": round(total_db_bytes / 1048576, 2),
-            "top_user": top["username"] if top else None,
+        "users":users,
+        "totals":{
+            "users":len(users),
+            "developers":sum(u["role"]=="developer" for u in users),
+            "admins":sum(u["role"]=="admin" for u in users),
+            "active_sessions":sum(u["active_sessions"] for u in users),
+            "databases":total_databases,
+            "database_bytes":total_db_bytes,
+            "database_mb":round(total_db_bytes/1048576,2),
+            "project_storage_bytes":total_project_bytes,
+            "project_storage_mb":round(total_project_bytes/1048576,2),
+            "media_bytes":total_media_bytes,
+            "media_mb":round(total_media_bytes/1048576,2),
+            "top_user":top["username"] if top else None,
+            "top_user_storage_bytes":top["project_storage_bytes"] if top else 0,
+            "top_database_user":top_db["username"] if top_db else None,
         },
-        "database_quota_mb": 2048,
+        "storage_quota_mb":settings.user_storage_quota_mb,
+        "disk":{"total_bytes":disk.total,"used_bytes":disk.used,"free_bytes":disk.free,
+                "used_percent":round((disk.used/disk.total)*100,2) if disk.total else 0},
     }
+
+
+@app.get("/api/admin/projects")
+async def admin_projects(request: Request):
+    require_role(request, "admin")
+    return {"items":[{
+        "id":p["id"],"name":p["name"],"slug":p["slug"],"owner_id":p["owner_id"],
+        "owner_username":p["owner_username"],"owner_role":p["owner_role"],"port":p["port"],
+        "enabled":bool(p["enabled"]),"status":p["status"],"pid":p["pid"],"entrypoint":p["entrypoint"],
+        "last_error":p["last_error"],"created_at":p["created_at"],"database_path":p["db_path"],
+        "project_dir":p["project_dir"]
+    } for p in list_all_projects()]}
+
+
+@app.get("/api/admin/databases")
+async def admin_databases(request: Request):
+    require_role(request, "admin")
+    users=admin_usage()
+    items=[]
+    for u in users:
+        for d in u["databases"]:
+            items.append({**d,"owner_id":u["id"],"owner_username":u["username"],"owner_role":u["role"],
+                          "database_mb":round(d["size_bytes"]/1048576,2)})
+    return {"items":items}
+
+
+@app.patch("/api/admin/users/{user_id}")
+async def admin_update_user(user_id:int, request:Request, body:UserUpdate):
+    actor=require_role(request,"admin")
+    with db() as c:
+        target=c.execute("SELECT * FROM users WHERE id=?",(user_id,)).fetchone()
+        admin_count=c.execute("SELECT COUNT(*) FROM users WHERE role='admin'").fetchone()[0]
+    if not target:
+        raise HTTPException(404,"Kullanıcı bulunamadı.")
+    if body.role is not None and body.role not in {"user","developer","admin"}:
+        raise HTTPException(400,"Geçersiz rol.")
+    if body.password is not None and len(body.password)<8:
+        raise HTTPException(400,"Şifre en az 8 karakter olmalı.")
+    if target["id"]==actor["id"] and body.role and body.role!="admin":
+        raise HTTPException(400,"Kendi yönetici yetkinizi kaldıramazsınız.")
+    if target["role"]=="admin" and body.role and body.role!="admin" and admin_count<=1:
+        raise HTTPException(400,"Sistemde en az bir yönetici hesabı kalmalı.")
+    fields={}
+    if body.role is not None: fields["role"]=body.role
+    if body.password is not None: fields["password_hash"]=hash_password(body.password)
+    update_user(user_id,**fields)
+    return {"ok":True}
+
+
+@app.delete("/api/admin/users/{user_id}")
+async def admin_delete_user(user_id:int, request:Request):
+    actor=require_role(request,"admin")
+    with db() as c:
+        target=c.execute("SELECT * FROM users WHERE id=?",(user_id,)).fetchone()
+        admin_count=c.execute("SELECT COUNT(*) FROM users WHERE role='admin'").fetchone()[0]
+        projects=c.execute("SELECT * FROM projects WHERE owner_id=?",(user_id,)).fetchall()
+    if not target:
+        raise HTTPException(404,"Kullanıcı bulunamadı.")
+    if target["id"]==actor["id"]:
+        raise HTTPException(400,"Aktif yönetici hesabı silinemez.")
+    if target["role"]=="admin" and admin_count<=1:
+        raise HTTPException(400,"Son yönetici hesabı silinemez.")
+    from .runner import stop_pid, pid_running
+    for p in projects:
+        if p["pid"] and pid_running(p["pid"]):
+            stop_pid(p["pid"])
+        shutil.rmtree(Path(p["project_dir"]).parent,ignore_errors=True)
+    delete_user(user_id)
+    return {"ok":True}
+
+
+@app.post("/api/admin/projects/{project_id}/stop")
+async def admin_stop_project(project_id:int, request:Request):
+    require_role(request,"admin")
+    p=get_project(project_id)
+    if not p:
+        raise HTTPException(404,"Proje bulunamadı.")
+    stop_project(p)
+    return {"ok":True,"status":"stopped"}
+
+
+@app.delete("/api/admin/projects/{project_id}")
+async def admin_delete_project(project_id:int, request:Request):
+    require_role(request,"admin")
+    p=get_project(project_id)
+    if not p:
+        raise HTTPException(404,"Proje bulunamadı.")
+    stop_project(p)
+    shutil.rmtree(Path(p["project_dir"]).parent,ignore_errors=True)
+    delete_project(project_id)
+    return {"ok":True}
 
 
 @app.get("/api/admin/users")
@@ -379,28 +498,50 @@ async def proxy_path(request: Request, slug: str, path: str):
 
 
 async def proxy(request: Request, slug: str, path: str):
-    u = require_user(request)
-    p = get_project_by_slug(slug)
+    u=require_user(request)
+    p=get_project_by_slug(slug)
     if not p or not p["enabled"] or not local_up(p["port"]):
-        raise HTTPException(404, "Uygulama çalışmıyor. Proje portunda yerelde başlatın.")
-    if u["role"] == "developer" and p["owner_id"] != u["id"]:
-        raise HTTPException(403, "Bu uygulamaya erişim yok.")
-    body = await request.body()
-    if len(body) > settings.app_proxy_body_max_mb * 1024 * 1024:
-        raise HTTPException(413, "İstek gövdesi sınırı aşıldı.")
-    target = "http://127.0.0.1:" + str(p["port"]) + "/" + path
+        raise HTTPException(404,"Uygulama çalışmıyor. Proje portunda yerelde başlatın.")
+    if u["role"]=="developer" and p["owner_id"]!=u["id"]:
+        raise HTTPException(403,"Bu uygulamaya erişim yok.")
+    body=await request.body()
+    if len(body)>settings.app_proxy_body_max_mb*1024*1024:
+        raise HTTPException(413,"İstek gövdesi sınırı aşıldı.")
+    target="http://127.0.0.1:"+str(p["port"])+"/"+path
     if request.url.query:
-        target += "?" + request.url.query
-    excluded = {"host","content-length","connection","transfer-encoding"}
-    headers = {k:v for k,v in request.headers.items() if k.lower() not in excluded}
-    headers["x-astra-project"] = p["slug"]
-    async with httpx.AsyncClient(timeout=60,follow_redirects=False) as client:
-        upstream = await client.request(request.method,target,content=body,headers=headers)
-    response_headers = {k:v for k,v in upstream.headers.items()
-                        if k.lower() not in {"content-length","connection","transfer-encoding","content-encoding","content-disposition"}}
+        target+="?"+request.url.query
+    excluded={"host","content-length","connection","transfer-encoding","content-encoding"}
+    headers={k:v for k,v in request.headers.items() if k.lower() not in excluded}
+    headers["x-astra-project"]=p["slug"]
+
+    if request.method in {"GET","HEAD"}:
+        client=httpx.AsyncClient(timeout=httpx.Timeout(60.0,connect=5.0),follow_redirects=False)
+        try:
+            upstream=await client.send(await client.build_request(request.method,target,content=body,headers=headers),stream=True)
+        except httpx.HTTPError as exc:
+            await client.aclose()
+            raise HTTPException(502,"Astra uygulaması erişilemiyor: "+str(exc))
+        response_headers={k:v for k,v in upstream.headers.items()
+                          if k.lower() not in {"content-length","connection","transfer-encoding","content-encoding","content-disposition"}}
+        async def iterate():
+            try:
+                async for chunk in upstream.aiter_bytes(64*1024):
+                    yield chunk
+            finally:
+                await upstream.aclose()
+                await client.aclose()
+        return StreamingResponse(iterate(),status_code=upstream.status_code,headers=response_headers,
+                                 media_type=upstream.headers.get("content-type"))
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0,connect=5.0),follow_redirects=False) as client:
+            upstream=await client.request(request.method,target,content=body,headers=headers)
+    except httpx.HTTPError as exc:
+        raise HTTPException(502,"Astra uygulaması erişilemiyor: "+str(exc))
+    response_headers={k:v for k,v in upstream.headers.items()
+                      if k.lower() not in {"content-length","connection","transfer-encoding","content-encoding","content-disposition"}}
     return Response(content=upstream.content,status_code=upstream.status_code,headers=response_headers,
                     media_type=upstream.headers.get("content-type"))
-
 
 def run():
     import uvicorn
